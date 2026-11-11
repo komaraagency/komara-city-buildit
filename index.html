@@ -203,12 +203,12 @@ scene.background = new THREE.Color(0x9ecfe6);
 scene.fog = new THREE.Fog(0x9ecfe6, 420, 1100);
 
 const camera = new THREE.PerspectiveCamera(48, window.innerWidth/window.innerHeight, 5, 2600);
-let camDist = 250, camPitch = 0.95, camRot = 0;
+let camDist = 235, camPitch = 0.62, camRot = 0.35;
 const camTarget = new THREE.Vector3(0, 0, 0);
 
-scene.add(new THREE.HemisphereLight(0xbfe3ff, 0x54703a, 0.5));
-scene.add(new THREE.AmbientLight(0xffffff, 0.22));
-const sun = new THREE.DirectionalLight(0xfff2d0, 0.78);
+scene.add(new THREE.HemisphereLight(0xd6ecff, 0x4b6b3c, 0.30));
+scene.add(new THREE.AmbientLight(0xffffff, 0.26));
+const sun = new THREE.DirectionalLight(0xfff4dc, 0.52);
 sun.position.set(150, 230, 110);
 scene.add(sun);
 
@@ -252,6 +252,91 @@ const MAT = {
   surbr:  new THREE.MeshBasicMaterial({color:0xfcd116, transparent:true, opacity:0.35})
 };
 const MUR = [0xe6dcc6, 0xd8c9ae, 0xefe5d2, 0xcdbfa3, 0xe3d3b7, 0xd9d2c6];
+/* ---------------- textures de façade modernes ---------------- */
+function texFacade(base, frame, glass){
+  return canvasTex((x,W,H)=>{
+    x.fillStyle = base; x.fillRect(0,0,W,H);
+    for(let i=0;i<420;i++){
+      x.fillStyle = Math.random()<.5?'rgba(255,255,255,.05)':'rgba(0,0,0,.05)';
+      x.fillRect(Math.random()*W, Math.random()*H, 2, 2);
+    }
+    const px=W*0.15, py=H*0.13, pw=W*0.70, ph=H*0.62;
+    x.fillStyle = frame; x.fillRect(px-3, py-3, pw+6, ph+6);
+    const gr = x.createLinearGradient(px, py, px+pw, py+ph);
+    gr.addColorStop(0, glass); gr.addColorStop(0.42,'#e2f1f8');
+    gr.addColorStop(0.58, glass); gr.addColorStop(1,'#9dbdd0');
+    x.fillStyle = gr; x.fillRect(px, py, pw, ph);
+    x.fillStyle = 'rgba(255,255,255,.42)';
+    x.beginPath(); x.moveTo(px, py+ph); x.lineTo(px+pw*0.42, py);
+    x.lineTo(px+pw*0.66, py); x.lineTo(px+pw*0.24, py+ph); x.closePath(); x.fill();
+    x.fillStyle = 'rgba(0,0,0,.22)'; x.fillRect(px-3, py+ph+3, pw+6, 4);
+    x.fillStyle = 'rgba(0,0,0,.14)'; x.fillRect(0, H-4, W, 4);
+  },128,128);
+}
+function texVitrage(base, mull){
+  return canvasTex((x,W,H)=>{
+    const gr = x.createLinearGradient(0,0,W,H);
+    gr.addColorStop(0, base); gr.addColorStop(0.4,'#cfe6f2');
+    gr.addColorStop(0.62, base); gr.addColorStop(1,'#7fa4bb');
+    x.fillStyle = gr; x.fillRect(0,0,W,H);
+    x.strokeStyle = mull; x.lineWidth = 3;
+    for(let i=1;i<3;i++){
+      x.beginPath(); x.moveTo(i*W/3,0); x.lineTo(i*W/3,H); x.stroke();
+      x.beginPath(); x.moveTo(0,i*H/3); x.lineTo(W,i*H/3); x.stroke();
+    }
+    x.fillStyle = 'rgba(255,255,255,.30)';
+    x.beginPath(); x.moveTo(0,H); x.lineTo(W*0.55,0); x.lineTo(W*0.8,0); x.lineTo(W*0.25,H); x.closePath(); x.fill();
+    x.fillStyle = 'rgba(0,0,0,.18)'; x.fillRect(0, H-5, W, 5);
+  },128,128);
+}
+const TEX_OMBRE = canvasTex((x,W,H)=>{
+  const g = x.createRadialGradient(W/2,H/2,4, W/2,H/2,W/2);
+  g.addColorStop(0,'rgba(0,0,0,.42)'); g.addColorStop(0.6,'rgba(0,0,0,.22)');
+  g.addColorStop(1,'rgba(0,0,0,0)');
+  x.fillStyle = g; x.fillRect(0,0,W,H);
+},128,128);
+
+const MATF = {
+  blanc: new THREE.MeshLambertMaterial({map: texFacade('#d6dde3','#b3bdc6','#6f9cba')}),
+  beige: new THREE.MeshLambertMaterial({map: texFacade('#d8c9ad','#b9a689','#628ea9')}),
+  verre: new THREE.MeshLambertMaterial({map: texVitrage('#4f7b95','#c2d3dd')}),
+  metal: new THREE.MeshLambertMaterial({map: texFacade('#5f6870','#41484e','#7ea6bd')}),
+  beton: new THREE.MeshLambertMaterial({map: texFacade('#b3bac1','#959da5','#6d94ad')})
+};
+MAT.piste      = new THREE.MeshLambertMaterial({color:0x3a3e44});
+MAT.gazon      = new THREE.MeshLambertMaterial({color:0x4d7a3c});
+MAT.sablePiste = new THREE.MeshLambertMaterial({color:0xd9c9a3});
+MAT.tronc      = new THREE.MeshLambertMaterial({color:0x6b4a2f});
+MAT.feuillage  = new THREE.MeshLambertMaterial({color:0x3f7a3a});
+MAT.feuillage2 = new THREE.MeshLambertMaterial({color:0x2f6330});
+MAT.tole       = new THREE.MeshLambertMaterial({color:0x96a1aa});
+MAT.dome       = new THREE.MeshLambertMaterial({color:0xd9d3c5});
+MAT.tuileRouge = new THREE.MeshLambertMaterial({color:0xa8452c});
+MAT.croixRouge = new THREE.MeshLambertMaterial({color:0xd64545});
+MAT.bleuAccent = new THREE.MeshLambertMaterial({color:0x2f6fb0});
+MAT.rougeAccent= new THREE.MeshLambertMaterial({color:0xc93b2f});
+MAT.auvent     = new THREE.MeshLambertMaterial({color:0xf0c419});
+MAT.enseigne   = new THREE.MeshBasicMaterial({color:0xfcd116});
+MAT.bois       = new THREE.MeshLambertMaterial({color:0x9a6b3f});
+MAT.beton      = new THREE.MeshLambertMaterial({color:0xbcc3c9});
+MAT.betonClair = new THREE.MeshLambertMaterial({color:0xdfe4e8});
+MAT.metal      = new THREE.MeshLambertMaterial({color:0x77808a});
+MAT.blancMat   = new THREE.MeshLambertMaterial({color:0xf6f9fb});
+MAT.tuileBleue = new THREE.MeshLambertMaterial({color:0x3c5d7d});
+MAT.ombreDouce = new THREE.MeshBasicMaterial({map:TEX_OMBRE, transparent:true, depthWrite:false, opacity:0.9});
+MAT.trottoir   = new THREE.MeshLambertMaterial({color:0xcfd4d8});
+const TEX_TOIT = canvasTex((x,W,H)=>{
+  x.fillStyle='#878e95'; x.fillRect(0,0,W,H);
+  for(let i=0;i<1200;i++){
+    x.fillStyle = Math.random()<.5?'rgba(255,255,255,.13)':'rgba(0,0,0,.16)';
+    x.fillRect(Math.random()*W, Math.random()*H, 3, 3);
+  }
+  x.strokeStyle='rgba(0,0,0,.20)'; x.lineWidth=2;
+  x.beginPath(); x.moveTo(0,H/2); x.lineTo(W,H/2); x.stroke();
+  x.beginPath(); x.moveTo(W/2,0); x.lineTo(W/2,H); x.stroke();
+},128,128);
+MAT.toitBeton  = new THREE.MeshLambertMaterial({map:TEX_TOIT});
+
 
 /* ---------------- sol, mer, plage ---------------- */
 const LARGE = N*TS + 240;
@@ -321,6 +406,7 @@ const ORDRE = ['main','route','maison','immeuble','commerce','bureau','usine',
 /* ---------------- meshes ---------------- */
 const routes = [];   // meshes de route fusionnables
 let routeMesh = null;
+let trottoirMesh = null;
 let routesDirty = true;
 
 function aRoute(t){
@@ -333,6 +419,7 @@ function aRoute(t){
 
 function reconstruireRoutes(){
   if(routeMesh){ monde.remove(routeMesh); routeMesh.geometry.dispose(); routeMesh = null; }
+  if(trottoirMesh){ monde.remove(trottoirMesh); trottoirMesh.geometry.dispose(); trottoirMesh = null; }
   const pos=[], nor=[], uv=[];
   for(let i=0;i<N;i++) for(let j=0;j<N;j++){
     const t = cases[i][j]; if(!t.route) continue;
@@ -350,121 +437,254 @@ function reconstruireRoutes(){
   routeMesh = new THREE.Mesh(geo, MAT.asph);
   routeMesh.frustumCulled = false;
   monde.add(routeMesh);
+
+  // trottoirs clairs autour des routes
+  const tp=[], tn=[];
+  for(let i=0;i<N;i++) for(let j=0;j<N;j++){
+    const t = cases[i][j]; if(!t.route) continue;
+    const g2 = new THREE.PlaneGeometry(TS+2.6, TS+2.6).toNonIndexed();
+    g2.rotateX(-Math.PI/2); g2.translate(t.x, 0.2, t.z);
+    const p2 = g2.attributes.position.array, n2 = g2.attributes.normal.array;
+    for(let k=0;k<p2.length;k++){ tp.push(p2[k]); tn.push(n2[k]); }
+  }
+  if(tp.length){
+    const gt = new THREE.BufferGeometry();
+    gt.setAttribute('position', new THREE.Float32BufferAttribute(tp,3));
+    gt.setAttribute('normal', new THREE.Float32BufferAttribute(tn,3));
+    if(trottoirMesh){ monde.remove(trottoirMesh); trottoirMesh.geometry.dispose(); }
+    trottoirMesh = new THREE.Mesh(gt, MAT.trottoir);
+    trottoirMesh.frustumCulled = false;
+    monde.add(trottoirMesh);
+  }
 }
 
-/* ---------------- bâtiments ---------------- */
+/* ---------------- bâtiments modernes ---------------- */
+const TUILE = 4;                       // une tuile de texture = 4 unités
+function geoBloc(w,h,d){
+  const geo = new THREE.BoxGeometry(w,h,d);
+  const uv = geo.attributes.uv;
+  for(let i=0;i<uv.count;i++) uv.setXY(i, uv.getX(i)*(w/TUILE), uv.getY(i)*(h/TUILE));
+  return geo;
+}
+
+const cacheTeinte = {};
+function teinte(mat, hex){
+  const k = mat.uuid + '_' + hex;
+  if(!cacheTeinte[k]){ const m = mat.clone(); m.color.setHex(hex); cacheTeinte[k] = m; }
+  return cacheTeinte[k];
+}
 function meshBatiment(t, cat){
   const g = new THREE.Group();
-  const niv = t.niv;
-  const r = Math.random;
-  let h = cat.pop || cat.gain ? 14 : 16;
-  if(t.type === 'maison') h = 11;
-  if(t.type === 'immeuble') h = 24 + niv*5;
-  if(t.type === 'commerce') h = 13;
-  if(t.type === 'bureau') h = 30 + niv*6;
-  if(t.type === 'usine') h = 18;
-  if(t.type === 'centrale') h = 22;
-  if(t.type === 'eau') h = 20;
-  if(t.type === 'hopital') h = 26;
-  if(t.type === 'ecole') h = 16;
-  if(t.type === 'police' || t.type === 'pompier') h = 15;
-  if(t.type === 'parc') h = 2;
+  const TEINTE = [0xffffff, 0xf7efe4, 0xebf1f4, 0xf5e8d6, 0xe4e9ee][Math.floor(Math.random()*5)];
+  const niv = t.niv || 1;
+  const type = t.type;
 
-  if(t.type === 'aeroport'){
-    const lg = 42 + niv*14;
-    const piste = new THREE.Mesh(new THREE.BoxGeometry(11, 0.8, lg), MAT.asphalte2 || MAT.route);
-    piste.position.set(0, 0.5, -lg/2 + 6); g.add(piste);
-    for(let k=0;k<6;k++){
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(1.1, lg*0.07), MAT.blanc);
-      m.rotation.x = -Math.PI/2; m.position.set(0, 1, -lg + 10 + k*(lg*0.13)); g.add(m);
-    }
-    const term = new THREE.Mesh(new THREE.BoxGeometry(10, 7 + niv*2, 9),
-      new THREE.MeshLambertMaterial({color:0xe8eef2}));
-    term.position.set(0, (7+niv*2)/2 + 0.4, 5); g.add(term);
-    const verre = new THREE.Mesh(new THREE.BoxGeometry(10.4, 2.2, 9.4), MAT.vitre);
-    verre.position.set(0, 5 + niv, 5); g.add(verre);
-    const tour = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 2, 12 + niv*6, 8),
-      new THREE.MeshLambertMaterial({color:0xd7dee4}));
-    tour.position.set(-6, (12+niv*6)/2, 6); g.add(tour);
-    const salle = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, 2.4, 10), MAT.vitre);
-    salle.position.set(-6, 12 + niv*6, 6); g.add(salle);
+  const bloc = (w,h,d,mat,y,x,z)=>{
+    const mm = mat.map ? teinte(mat, TEINTE) : mat;
+    const m = new THREE.Mesh(geoBloc(w,h,d), mm);
+    m.position.set(x||0, y, z||0); g.add(m); return m;
+  };
+  const slab = (w,h,d,mat,y,x,z)=>{
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mat);
+    m.position.set(x||0, y, z||0); g.add(m); return m;
+  };
+  const cyl = (rt,rb,h,mat,y,x,z,seg)=>{
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg||12), mat);
+    m.position.set(x||0, y, z||0); g.add(m); return m;
+  };
+
+  /* ---------- AEROPORT ---------- */
+  if(type === 'aeroport'){
+    const lg = 44 + niv*14;
+    slab(12, 0.6, lg, MAT.piste, 0.5, 0, -lg/2 + 6);
+    for(let k=0;k<7;k++) slab(1.2, 0.1, lg*0.06, MAT.blanc, 0.85, 0, -lg + 10 + k*(lg*0.12));
+    const term = bloc(11, 7 + niv*2.5, 9, MATF.verre, (7+niv*2.5)/2 + 0.4, 0, 5);
+    slab(13, 0.6, 11, MAT.beton, 7 + niv*2.5 + 0.9, 0, 5);
+    slab(11.4, 1.1, 9.4, MAT.tuileBleue, 6.2 + niv, 0, 5);
+    cyl(1.8, 2.1, 13 + niv*6, MAT.betonClair, (13+niv*6)/2, -6.5, 6);
+    cyl(2.8, 2.8, 2.6, MAT.verre, 13 + niv*6, -6.5, 6, 14);
+    slab(3.6, 0.4, 3.6, MAT.metal, 14.3 + niv*6, -6.5, 6);
     g.userData.aeroport = true;
     if(niv >= 2){
       const av = new THREE.Group();
-      const fus = new THREE.Mesh(new THREE.CylinderGeometry(0.9,0.9,7,8),
-        new THREE.MeshLambertMaterial({color:0xf2f5f7}));
+      const fus = new THREE.Mesh(new THREE.CylinderGeometry(0.9,0.9,7,10), MAT.blancMat);
       fus.rotation.x = Math.PI/2; av.add(fus);
-      const aile = new THREE.Mesh(new THREE.BoxGeometry(9,0.35,1.9),
-        new THREE.MeshLambertMaterial({color:0xdfe6ea}));
-      av.add(aile);
-      const q = new THREE.Mesh(new THREE.BoxGeometry(3,0.3,1.2),
-        new THREE.MeshLambertMaterial({color:0xdfe6ea}));
-      q.position.z = -3; av.add(q);
+      const aile = new THREE.Mesh(new THREE.BoxGeometry(9.5,0.32,1.9), MAT.blancMat); av.add(aile);
+      const q = new THREE.Mesh(new THREE.BoxGeometry(3.2,0.3,1.2), MAT.blancMat); q.position.z = -3; av.add(q);
+      const nez = new THREE.Mesh(new THREE.SphereGeometry(0.9,10,8), MAT.blancMat); nez.position.z = 3.5; av.add(nez);
       av.position.set(0, 3, 0); av.visible = false;
-      g.add(av);
-      g.userData.avion = av;
+      g.add(av); g.userData.avion = av;
     }
-    return g;
+    return finir(g, t);
   }
-  if(t.type === 'parc'){
-    const g2 = new THREE.Mesh(new THREE.CylinderGeometry(0.6,0.6,5,6), MAT.noir);
-    g2.position.y = 2.5; g.add(g2);
+
+  /* ---------- PARC ---------- */
+  if(type === 'parc'){
+    slab(11, 0.25, 11, MAT.gazon, 0.35);
+    slab(3, 0.3, 11, MAT.sablePiste, 0.42, 0);
+    for(let k=0;k<5;k++){
+      const px = (k%3 - 1)*3.6, pz = (Math.floor(k/3)*5 - 2.5);
+      cyl(0.5,0.7,4.5, MAT.tronc, 2.3, px, pz, 7);
+      const c1 = new THREE.Mesh(new THREE.SphereGeometry(2.7,10,8), MAT.feuillage);
+      c1.position.set(px, 6.4, pz); c1.scale.y = 1.15; g.add(c1);
+      const c2 = new THREE.Mesh(new THREE.SphereGeometry(1.9,9,7), MAT.feuillage2);
+      c2.position.set(px+1.4, 5.2, pz-0.8); g.add(c2);
+    }
+    slab(4.6,0.35,1.7, MAT.bois, 1.3, 0, 4.2);
+    return finir(g, t);
+  }
+
+  /* ---------- USINE ---------- */
+  if(type === 'usine'){
+    const h = 11;
+    bloc(9.4, h, 9, MATF.metal, h/2 + 0.4);
+    for(let k=0;k<3;k++) slab(9.4, 0.5, 3.1, MAT.tole, h + 0.8 + k*0.1, 0, -3 + k*3);
+    slab(2.4, 13, 2.4, MAT.betonClair, 6.5, 3.2, -2.6);
+    slab(2.7, 0.8, 2.7, MAT.metal, 13.2, 3.2, -2.6);
+    slab(9.8, 0.4, 9.4, MAT.metal, h + 0.6);
+    return finir(g, t);
+  }
+
+  /* ---------- CENTRALE ---------- */
+  if(type === 'centrale'){
+    const h = 10;
+    bloc(8.4, h, 7.6, MATF.beton, h/2 + 0.4);
+    slab(9, 0.6, 8.2, MAT.toitBeton, h + 0.7);
+    cyl(3, 3.8, 14, MAT.betonClair, 7.4, -2.2, -1.4, 16);
+    cyl(3, 3.8, 14, MAT.betonClair, 7.4, 3.2, -1.4, 16);
+    cyl(3.3, 3.3, 0.8, MAT.metal, 14.6, -2.2, -1.4, 16);
+    cyl(3.3, 3.3, 0.8, MAT.metal, 14.6, 3.2, -1.4, 16);
+    return finir(g, t);
+  }
+
+  /* ---------- CHATEAU D'EAU ---------- */
+  if(type === 'eau'){
+    cyl(4.4, 4.4, 8, MATF.blanc, 8.6, 0, 0, 18);
+    cyl(4.6, 4.6, 0.7, MAT.betonClair, 12.9, 0, 0, 18);
+    cyl(1.2, 1.2, 5, MAT.metal, 2.6, 0, 0, 10);
+    for(let k=0;k<4;k++){
+      const a = k*Math.PI/2 + 0.4;
+      cyl(0.42, 0.42, 9, MAT.metal, 4.6, Math.cos(a)*2.6, Math.sin(a)*2.6, 8);
+    }
+    slab(9, 0.4, 9, MAT.gazon, 0.35);
+    return finir(g, t);
+  }
+
+  /* ---------- MAIRIE ---------- */
+  if(type === 'mairie'){
+    const h = 11;
+    bloc(9.6, h, 8.4, MATF.blanc, h/2 + 0.4);
+    slab(10.6, 0.8, 9.4, MAT.betonClair, h + 0.8);
+    for(let k=0;k<4;k++) cyl(0.7,0.7,7.5, MAT.betonClair, 3.9, -3.3 + k*2.2, 4.6, 10);
+    slab(10, 0.7, 1.6, MAT.betonClair, 7.8, 0, 4.6);
+    cyl(2.6, 2.6, 3.2, MAT.dome, h + 3.2, 0, -0.6, 16);
+    const sp = new THREE.Mesh(new THREE.ConeGeometry(2.7, 3.2, 16), MAT.tuileRouge);
+    sp.position.set(0, h + 6.4, -0.6); g.add(sp);
+    return finir(g, t);
+  }
+
+  /* ---------- ECOLE ---------- */
+  if(type === 'ecole'){
+    bloc(8.6, 8, 6.6, MATF.beige, 4.4, 0, -1.4);
+    slab(9, 0.5, 7, MAT.betonClair, 8.6, 0, -1.4);
+    bloc(6.4, 5, 4.4, MATF.beige, 2.9, 0, 3.4);
+    slab(6.8, 0.4, 4.8, MAT.betonClair, 5.6, 0, 3.4);
+    slab(7.2, 0.25, 3, MAT.gazon, 0.35, 0, 5.6);
+    return finir(g, t);
+  }
+
+  /* ---------- HOPITAL ---------- */
+  if(type === 'hopital'){
+    const h = 16 + niv*2;
+    bloc(8.6, h, 8.2, MATF.blanc, h/2 + 0.4);
+    slab(9.2, 0.6, 8.8, MAT.toitBeton, h + 0.7);
+    slab(2.4, 0.3, 5.4, MAT.croixRouge, h*0.62, 0, 4.3);
+    slab(5.4, 0.3, 2.4, MAT.croixRouge, h*0.62, 0, 4.3);
+    slab(6, 3.4, 0.3, MAT.verre, 2.4, 0, 4.2);
+    return finir(g, t);
+  }
+
+  /* ---------- POLICE / POMPIER ---------- */
+  if(type === 'police' || type === 'pompier'){
+    const h = 9;
+    const accent = type === 'police' ? MAT.bleuAccent : MAT.rougeAccent;
+    bloc(8.8, h, 7.8, MATF.metal, h/2 + 0.4);
+    slab(9.4, 0.5, 8.4, MAT.toitBeton, h + 0.7);
+    slab(9.2, 1.1, 8.2, accent, h*0.78);
+    slab(5.6, 2.6, 0.3, MAT.verre, 2.1, 0, 4.1);
+    slab(7, 0.4, 5, MAT.beton, 0.35, 0, 5.2);
+    return finir(g, t);
+  }
+
+  /* ---------- COMMERCE ---------- */
+  if(type === 'commerce'){
+    const h = 9;
+    bloc(9, h, 8.2, MATF.beige, h/2 + 0.4);
+    slab(9.4, 2.9, 8.6, MAT.verre, 1.9);
+    slab(10, 0.6, 9.2, MAT.betonClair, 3.6);
+    slab(9.6, 1.2, 8.8, MAT.auvent, 4.6);
+    slab(9.6, 0.5, 9, MAT.betonClair, h + 0.6);
+    slab(4, 1.4, 0.3, MAT.enseigne, h*0.82, 0, 4.2);
+    return finir(g, t);
+  }
+
+  /* ---------- MAISON (villa moderne) ---------- */
+  if(type === 'maison'){
+    const h1 = 3.6, h2 = 3.2 + niv*0.5;
+    bloc(7.4, h1, 6.4, MATF.blanc, h1/2 + 0.4);
+    bloc(5.6, h2, 5.6, MATF.blanc, h1 + h2/2 + 0.6, -0.6, -0.3);
+    slab(8.4, 0.45, 7.2, MAT.toitBeton, h1 + 0.55);
+    slab(6.4, 0.4, 6.2, MAT.bois, h1 + h2 + 0.8, -0.6, -0.3);
+    slab(7.6, 1.5, 0.25, MAT.verre, 1.9, 0, 3.25);
+    slab(5.6, 1.4, 0.22, MAT.verre, h1 + 2.2, -0.6, 2.55);
+    slab(2.4, 1.6, 2.4, MAT.gazon, 0.35, 3.9, 3.4);
+    slab(2.6, 1.2, 2.6, MAT.feuillage, 1.4, 3.9, 3.4);
+    return finir(g, t);
+  }
+
+  /* ---------- IMMEUBLE (résidentiel à gradins) ---------- */
+  if(type === 'immeuble'){
+    const h1 = 13 + niv*2.2;
+    bloc(8.8, h1, 7.8, MATF.beige, h1/2 + 0.4);
+    slab(9.4, 0.55, 8.4, MAT.toitBeton, h1 + 0.7);
+    const h2 = 7 + niv*1.8;
+    bloc(6.6, h2, 6, MATF.blanc, h1 + h2/2 + 0.9, 0, -0.4);
+    slab(7.2, 0.5, 6.6, MAT.toitBeton, h1 + h2 + 1.15, 0, -0.4);
     for(let k=0;k<3;k++){
-      const c = new THREE.Mesh(new THREE.SphereGeometry(3.1,10,8),
-        new THREE.MeshLambertMaterial({color:0x3f7a3a}));
-      c.position.set((k-1)*3.6, 6.5, (k%2)*2-1); g.add(c);
-      const tr = new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.55,4,6), MAT.noir);
-      tr.position.set((k-1)*3.6, 2.6, (k%2)*2-1); g.add(tr);
+      slab(1.6, 1.1, 1.6, MAT.metal, h1 + h2 + 1.75, -2 + k*2, 0.4);
     }
-    const banc = new THREE.Mesh(new THREE.BoxGeometry(5,1,1.6), MAT.toit);
-    banc.position.set(0,1.2,4); g.add(banc);
-  } else {
-    const w = t.type === 'maison' ? 6.4 : 7.6;
-    const d = t.type === 'maison' ? 6 : 7.2;
-    const corps = new THREE.Mesh(new THREE.BoxGeometry(w, h, d),
-      new THREE.MeshLambertMaterial({color: t.type==='usine'?0x9aa3ab : MUR[Math.floor(r()*MUR.length)]}));
-    corps.position.y = h/2 + 0.4; g.add(corps);
-    // toit
-    const toit = new THREE.Mesh(new THREE.BoxGeometry(w*1.09, 1.5, d*1.09),
-      t.type==='commerce'||t.type==='bureau' ? MAT.toitB : MAT.toit);
-    toit.position.y = h + 1.15; g.add(toit);
-    // fenêtres
-    const etages = Math.max(1, Math.floor(h/6));
-    for(let e=0;e<etages;e++){
-      const y = 3.4 + e*5.6;
-      if(y > h-2) break;
-      for(const s of [-1,1]){
-        const f = new THREE.Mesh(new THREE.PlaneGeometry(w*0.78, 2.4), MAT.vitre);
-        f.position.set(0, y, s*(d/2+0.06)); if(s<0) f.rotation.y = Math.PI; g.add(f);
-      }
-    }
-    if(t.type === 'centrale'){
-      for(let k=0;k<2;k++){
-        const ch = new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.7,12,8), MAT.noir);
-        ch.position.set((k?1:-1)*2.6, h+5, 0); g.add(ch);
-      }
-    }
-    if(t.type === 'eau'){
-      const cuve = new THREE.Mesh(new THREE.CylinderGeometry(4,4,7,12),
-        new THREE.MeshLambertMaterial({color:0x9fc6e0}));
-      cuve.position.y = h+3; g.add(cuve);
-      for(let k=0;k<3;k++){
-        const p = new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.4,9,6), MAT.noir);
-        p.position.set(Math.cos(k*2.1)*3, 5, Math.sin(k*2.1)*3); g.add(p);
-      }
-    }
-    if(t.type === 'usine'){
-      const ch = new THREE.Mesh(new THREE.CylinderGeometry(1.2,1.4,9,8), MAT.noir);
-      ch.position.set(2.4, h+4, 0); g.add(ch);
-    }
+    slab(7.8, 0.35, 5, MAT.bois, h1 + 0.95, 0, 2.6);
+    return finir(g, t);
   }
-  // ombre
-  const om = new THREE.Mesh(new THREE.PlaneGeometry(TS*0.94, TS*0.94), MAT.ombre);
-  om.rotation.x = -Math.PI/2; om.position.set(2.4, 0.18, 2.4); g.add(om);
+
+  /* ---------- BUREAU (tour vitrée) ---------- */
+  if(type === 'bureau'){
+    const hb = 7;
+    bloc(9.2, hb, 8.4, MATF.beton, hb/2 + 0.4);
+    slab(9.8, 0.5, 9, MAT.toitBeton, hb + 0.65);
+    const ht = 24 + niv*7;
+    bloc(6.4, ht, 6.4, MATF.verre, hb + ht/2 + 0.9);
+    slab(7.2, 0.6, 7.2, MAT.betonClair, hb + ht + 1.2);
+    slab(4.4, 2.6, 4.4, MATF.verre, hb + ht + 2.8);
+    cyl(0.16, 0.16, 8, MAT.metal, hb + ht + 8, 0, 0, 6);
+    slab(9, 0.3, 4.4, MAT.tuileBleue, hb*0.55, 0, 4.2);
+    return finir(g, t);
+  }
+
+  /* ---------- défaut ---------- */
+  bloc(8, 12, 7.6, MATF.blanc, 6.4);
+  slab(8.6, 0.5, 8.2, MAT.betonClair, 12.6);
+  return finir(g, t);
+}
+
+function finir(g, t){
+  const om = new THREE.Mesh(new THREE.PlaneGeometry(TS*1.02, TS*1.02), MAT.ombreDouce);
+  om.rotation.x = -Math.PI/2; om.position.set(2.6, 0.16, 2.6); g.add(om);
   g.position.set(t.x, 0, t.z);
   g.userData.dyn = true;
   return g;
 }
+
 
 function poserBatiment(t, type){
   const cat = CAT[type]; if(!cat) return false;
@@ -1074,7 +1294,7 @@ function demarrer(avecSauvegarde){
   S.argent = 12000; S.pop = 0; S.popCible = 0; S.bonheur = 50; S.xp = 0; S.niveau = 1; S.nbUsines = 0;
   S.acier = 6; S.bois = 4; S.plast = 2; S.outil = 'main';
   S.touristes = 0; S.colons = 0; S.colT = 0; S.msgVis = false; S.mairie = 0;
-  camTarget.set(0,0,0); camDist = 250; camPitch = 0.95; majCamera();
+  camTarget.set(0,0,0); camDist = 235; camPitch = 0.62; camRot = 0.35; majCamera();
   $('#start').classList.add('cache');
   $('#end').classList.add('cache');
   S.joue = true;
@@ -1392,6 +1612,7 @@ window.G = {
   S, cases, CAT, monde, scene, poser: (t)=>appliquer(t), choisirOutil,
   poserBatiment, poserRoute, detruire, recolter, tick, recalculer, demarrer,
   get camDist(){ return camDist; }, set camDist(v){ camDist = v; },
+  get camPitch(){ return camPitch; }, set camPitch(v){ camPitch = v; }, majCamera,
   majCamera, N,
   panneauAeroport, ameliorerAeroport, panneauMateriaux, acheterMat, collecteAuto, fermerPanneau,
   sauvegarder, restaurer, aSauvegarde, effacerSauvegarde,
