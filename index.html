@@ -137,6 +137,7 @@
     <button id="btnZone">🌍 Agrandir</button>
     <button id="btnMat">🛒 Matériaux</button>
     <button id="btnInst">📲 Installer</button>
+    <button id="btnSauv">💾 Save</button>
   </div>
 </div>
 
@@ -159,8 +160,8 @@
     <li>Alimente en électricité et en eau, sinon rien ne se développe</li>
     <li>Tape les bâtiments pour récolter les loyers</li>
   </ul>
-  <button id="go">JOUER</button>
-  <button id="goSave" style="display:none;margin-top:8px;background:rgba(255,255,255,.14)">CONTINUER MA VILLE</button>
+  <button id="goSave" style="display:none">💾 CONTINUER MA VILLE</button>
+  <button id="go" style="margin-top:8px;background:rgba(255,255,255,.14)">NOUVELLE VILLE</button>
 </div>
 
 <div id="end" class="ecran cache">
@@ -186,7 +187,7 @@ if(typeof THREE.CapsuleGeometry !== 'function'){
    KOMARA CITY BUILDIT — construction, matériaux, services, habitants
    ========================================================================== */
 const $ = s => document.querySelector(s);
-const N = 16, TS = 15, DEMI = N*TS/2;
+const N = 24, TS = 15, DEMI = N*TS/2;
 
 /* ---------------- rendu ---------------- */
 const canvas = $('#c');
@@ -204,7 +205,7 @@ scene.background = new THREE.Color(0x9ecfe6);
 scene.fog = new THREE.Fog(0x9ecfe6, 420, 1100);
 
 const camera = new THREE.PerspectiveCamera(48, window.innerWidth/window.innerHeight, 5, 2600);
-let camDist = 235, camPitch = 0.62, camRot = 0.35;
+let camDist = 330, camPitch = 0.62, camRot = 0.35;
 const camTarget = new THREE.Vector3(0, 0, 0);
 
 scene.add(new THREE.HemisphereLight(0xd6ecff, 0x4b6b3c, 0.30));
@@ -451,7 +452,7 @@ plage.rotation.x = -Math.PI/2; plage.position.set(-DEMI-35, 0.05, 0); scene.add(
 
 const sol = new THREE.Mesh(new THREE.PlaneGeometry(N*TS+120, N*TS+120), MAT.herbe);
 sol.rotation.x = -Math.PI/2; sol.position.y = 0.12;
-TEX_HERBE.repeat.set(9,9); monde.add(sol);
+TEX_HERBE.repeat.set(14,14); monde.add(sol);
 
 /* grille */
 const grilleGeo = new THREE.BufferGeometry();
@@ -890,15 +891,15 @@ function finir(g, t){
 
 
 /* ---------------- extension du terrain ---------------- */
-const COUT_ESPACE = [0, 6000, 18000, 45000, 90000];
-function rayonDebloque(){ return 3.5 + (S.exp - 1) * 1.5; }
+const COUT_ESPACE = [0, 6000, 20000, 50000, 110000, 200000];
+function rayonDebloque(){ return 4.5 + (S.exp - 1) * 1.15; }
 function estDeverrouille(i, j){
   const c = (N - 1) / 2;
   return Math.max(Math.abs(i - c), Math.abs(j - c)) <= rayonDebloque() + 0.01;
 }
 function coutEspace(){ return COUT_ESPACE[Math.min(S.exp, COUT_ESPACE.length - 1)] || 0; }
 function agrandir(){
-  if(S.exp >= 4){ toast('Terrain déjà au maximum', true); return false; }
+  if(S.exp >= COUT_ESPACE.length - 1){ toast('Terrain déjà au maximum', true); return false; }
   const c = coutEspace();
   if(S.argent < c){ toast('Il faut ' + c + ' € pour agrandir', true); return false; }
   S.argent -= c; S.exp++;
@@ -960,7 +961,7 @@ function detruire(t){
   if(t.bati){ monde.remove(t.bati); t.bati = null; }
   if(t.route){ t.route = false; routesDirty = true; }
   t.type = 'vide'; t.cap = 0; t.caisse = 0;
-  recalculer();
+  recalculer(); majHUD(); sauvegarder();
   return true;
 }
 
@@ -970,6 +971,7 @@ function poserRoute(t){
   if(S.argent < 30){ toast('Pas assez d\'argent', true); return false; }
   S.argent -= 30; t.route = true; routesDirty = true;
   S.xp += 2;
+  sauvegarder();
   return true;
 }
 
@@ -1197,6 +1199,42 @@ function fermerPanneau(){ $('#panneau').classList.remove('on'); }
 const PRIX_MAT = {acier:32, bois:24, plast:46};
 const NOM_MAT = {acier:'acier', bois:'bois', plast:'plastique'};
 
+function codeSauvegarde(){
+  try{ return btoa(unescape(encodeURIComponent(localStorage.getItem(SAVE_KEY3) || ''))); }catch(e){ return ''; }
+}
+function panneauSauvegarde(){
+  const code = codeSauvegarde();
+  const corps =
+    '<div style="opacity:.85;margin-bottom:8px">Ta ville est sauvegardée automatiquement sur ce téléphone. '
+    + 'Si tu changes d\'appareil ou si tu vides le navigateur, colle ce code pour tout retrouver.</div>'
+    + '<div class="ligne"><span>Code de ma ville</span><span><button id="copCode">📋 Copier</button></span></div>'
+    + '<textarea id="taCode" style="width:100%;height:78px;margin-top:6px;border-radius:10px;padding:8px;'
+    + 'background:rgba(0,0,0,.35);color:#eaf3f7;border:1px solid rgba(255,255,255,.18);font-size:11px">'
+    + code + '</textarea>'
+    + '<div class="ligne" style="margin-top:10px"><span>Restaurer avec un code</span>'
+    + '<span><button id="okCode">✔ Restaurer</button></span></div>';
+  ouvrirPanneau('💾 Sauvegarde', corps);
+  const ta = document.getElementById('taCode');
+  document.getElementById('copCode').onclick = async ()=>{
+    ta.select();
+    try{ await navigator.clipboard.writeText(code); toast('Code copié'); }
+    catch(e){ try{ document.execCommand('copy'); toast('Code copié'); }catch(_){ toast('Copie manuelle : sélectionne le code', true); } }
+  };
+  document.getElementById('okCode').onclick = ()=>{
+    const v = (ta.value || '').trim();
+    if(!v){ toast('Colle d\'abord un code', true); return; }
+    try{
+      const json = decodeURIComponent(escape(atob(v)));
+      const d = JSON.parse(json);
+      if(!d || !d.c) throw new Error('code');
+      localStorage.setItem(SAVE_KEY3, json);
+      fermerPanneau();
+      demarrer(true);
+      toast('Ville restaurée ✅');
+    }catch(e){ toast('Code invalide', true); }
+  };
+}
+
 function panneauMateriaux(){
   let corps = '<div style="opacity:.8;margin-bottom:8px">Achète des matériaux pour améliorer tes aéroports.</div>';
   for(const k of ['acier','bois','plast']){
@@ -1267,7 +1305,7 @@ function ameliorerAeroport(t){
 function majHUD(){
   const pz = $('#btnZone');
   if(pz){
-    if(S.exp >= 4){ pz.textContent = '🌍 Terrain max'; }
+    if(S.exp >= COUT_ESPACE.length - 1){ pz.textContent = '🌍 Terrain max'; }
     else { pz.textContent = '🌍 Agrandir ' + coutEspace().toLocaleString('fr-FR') + ' €'; }
   }
   const pa = $('#auto'); if(pa) pa.classList.toggle('on', (S.mairie||0) > 0);
@@ -1351,12 +1389,13 @@ if(window.screen && window.screen.orientation && window.screen.orientation.addEv
 redimensionner();
 
 $('#btnZone').onclick = ()=> agrandir();
+$('#btnSauv').onclick = ()=> panneauSauvegarde();
 $('#btnMarche').onclick = ()=> panneauMarche();
 $('#btnMat').onclick = ()=> panneauMateriaux();
 $('#panFermer').onclick = ()=> fermerPanneau();
 $('#panneau').onclick = (e)=>{ if(e.target.id === 'panneau') fermerPanneau(); };
-$('#zin').onclick = ()=>{ camDist = Math.max(120, camDist-45); majCamera(); };
-$('#zout').onclick = ()=>{ camDist = Math.min(560, camDist+45); majCamera(); };
+$('#zin').onclick = ()=>{ camDist = Math.max(130, camDist-45); majCamera(); };
+$('#zout').onclick = ()=>{ camDist = Math.min(760, camDist+45); majCamera(); };
 
 /* ---------------- interaction ---------------- */
 const raycaster = new THREE.Raycaster();
@@ -1452,6 +1491,7 @@ function appliquer(t){
   if(cat && cat.niv && cat.niv > S.niveau){ toast('Débloqué au niveau ' + cat.niv, true); return; }
   poserBatiment(t, S.outil);
   majSurbrillance(t);
+  sauvegarder();
 }
 
 function majSurbrillance(t){
@@ -1525,7 +1565,7 @@ function boucle(now){
     accum += dt;
     if(accum > 1){ accum = 0; recalculer(); majHUD();
       S.saveT = (S.saveT || 0) + 1;
-      if(S.saveT >= 8) sauvegarder();
+      if(S.saveT >= 3) sauvegarder();
     }
   }
   // animation de pose + pièces
@@ -1558,6 +1598,8 @@ requestAnimationFrame(boucle);
 const S_Etat = {joue:false};
 S.joue = false;
 
+const SAVE_KEY = 'komara_city_save_v2';
+const SAVE_KEY3 = 'komara_city_save_v3';
 function demarrer(avecSauvegarde){
   if(!avecSauvegarde && aSauvegarde() && !window._forceNew){
     if(!confirm('Ta ville sauvegardée va être effacée. Continuer ?')) return;
@@ -1573,7 +1615,7 @@ function demarrer(avecSauvegarde){
   S.argent = 12000; S.pop = 0; S.popCible = 0; S.bonheur = 50; S.xp = 0; S.niveau = 1; S.nbUsines = 0;
   S.acier = 6; S.bois = 4; S.plast = 2; S.outil = 'main';
   S.touristes = 0; S.colons = 0; S.colT = 0; S.msgVis = false; S.mairie = 0; S.exp = 1;
-  camTarget.set(0,0,0); camDist = 235; camPitch = 0.62; camRot = 0.35; majCamera();
+  camTarget.set(0,0,0); camDist = 330; camPitch = 0.62; camRot = 0.35; majCamera();
   $('#start').classList.add('cache');
   $('#end').classList.add('cache');
   S.joue = true;
@@ -1806,9 +1848,9 @@ function panneauMarche(){
 }
 
 /* ---------------- sauvegarde locale ---------------- */
-const SAVE_KEY = 'komara_city_save_v2';
-function aSauvegarde(){ try{ return !!localStorage.getItem(SAVE_KEY); }catch(e){ return false; } }
-function effacerSauvegarde(){ try{ localStorage.removeItem(SAVE_KEY); }catch(e){} }
+
+function aSauvegarde(){ try{ return !!localStorage.getItem(SAVE_KEY3) || !!localStorage.getItem(SAVE_KEY); }catch(e){ return false; } }
+function effacerSauvegarde(){ try{ localStorage.removeItem(SAVE_KEY3); localStorage.removeItem(SAVE_KEY); }catch(e){} }
 function sauvegarder(){
   if(!S.joue) return;
   try{
@@ -1819,21 +1861,27 @@ function sauvegarder(){
       else if(t.type && t.type !== 'vide')
         c.push([i,j,t.type,t.niv,Math.round(t.caisse||0),t.stock||0,t.matKind||'']);
     }
-    localStorage.setItem(SAVE_KEY, JSON.stringify({
-      v:2, d:Date.now(),
-      s:{argent:Math.round(S.argent), bonheur:S.bonheur, xp:S.xp,
+    const etat = {
+      v:3, d:Date.now(), N:N, x:0, y:0,
+      s:{argent:Math.round(S.argent), bonheur:S.bonheur, xp:S.xp, niveau:S.niveau,
+         exp:S.exp||1, mairie:S.mairie||0,
+         acier:S.acier||0, bois:S.bois||0, plast:S.plast||0,
          colons:S.colons||0, touristes:Math.round(S.touristes||0), temps:S.temps},
       c:c
-    }));
+    };
+    localStorage.setItem(SAVE_KEY3, JSON.stringify(etat));
+    localStorage.setItem(SAVE_KEY, JSON.stringify(etat));
     S.saveT = 0;
     return true;
   }catch(e){ return false; }
 }
 function restaurer(){
   let d = null;
-  try{ d = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); }catch(e){}
+  try{ d = JSON.parse(localStorage.getItem(SAVE_KEY3) || localStorage.getItem(SAVE_KEY) || 'null'); }catch(e){}
   if(!d || !d.c) return false;
-  for(const e of d.c){
+  const dec = ((d.N || 16) === N) ? 0 : Math.round((N - (d.N || 16)) / 2);
+  for(const e0 of d.c){
+    const e = dec ? [e0[0] + dec, e0[1] + dec].concat(e0.slice(2)) : e0;
     const i = e[0], j = e[1], type = e[2], niv = e[3] || 1, caisse = e[4] || 0, stock = e[5] || 0, mk = e[6];
     const t = cases[i] && cases[i][j];
     if(!t) continue;
@@ -1844,18 +1892,24 @@ function restaurer(){
     if(type === 'usine'){ t.matKind = mk || 'acier'; t.stock = stock; t.prodT = 0; S.nbUsines++; }
     t.bati = meshBatiment(t, cat);
     monde.add(t.bati);
-    t.bati.scale.set(1, 1, 1);
+    t.bati.scale.setScalar(t.bati.userData.cible || 1);
   }
   const s = d.s || {};
   if(typeof s.argent === 'number') S.argent = s.argent;
   if(typeof s.bonheur === 'number') S.bonheur = s.bonheur;
   if(typeof s.xp === 'number') S.xp = s.xp;
+  if(typeof s.niveau === 'number') S.niveau = s.niveau;
+  if(typeof s.exp === 'number') S.exp = Math.max(1, Math.min(COUT_ESPACE.length - 1, s.exp));
+  if(typeof s.mairie === 'number') S.mairie = s.mairie;
+  if(typeof s.acier === 'number') S.acier = s.acier;
+  if(typeof s.bois === 'number') S.bois = s.bois;
+  if(typeof s.plast === 'number') S.plast = s.plast;
   S.colons = s.colons || 0;
   S.touristes = s.touristes || 0;
   S.temps = s.temps || 0;
-  S.pop = 0;
   routesDirty = true;
   recalculer();
+  S.pop = S.popCible || 0;
   majHUD();
   reconstruireVerrou();
   return true;
@@ -1898,7 +1952,8 @@ window.G = {
   panneauAeroport, ameliorerAeroport, panneauMateriaux, acheterMat, collecteAuto, fermerPanneau,
   sauvegarder, restaurer, aSauvegarde, effacerSauvegarde,
   panneauMarche, marcheLister, marchePublier, marcheAcheter, voitures,
-  estDeverrouille, agrandir, coutEspace, reconstruireVerrou
+  estDeverrouille, agrandir, coutEspace, reconstruireVerrou,
+  panneauSauvegarde, codeSauvegarde, N
 };
 </script>
 </body>
