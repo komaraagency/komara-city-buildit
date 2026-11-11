@@ -4,6 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Komara City BuildIt</title>
+<meta name="theme-color" content="#0d1a26">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Komara City">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
 <style>
   :root{--or:#fcd116;--vert:#2ecc71;--rouge:#e74c3c;--bleu:#14202b;}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -18,6 +26,25 @@
     padding:5px 9px;font-size:12px;font-weight:800;display:flex;align-items:center;gap:5px;white-space:nowrap}
   .pill b{font-size:13px}
   #cash{color:var(--or)} #pop{color:#8fd8ff} #bon{color:var(--vert)}
+  #auto{display:none;color:#7ee787;border-color:rgba(46,204,113,.55)}
+  #auto.on{display:flex}
+  #actions{display:flex;gap:6px;justify-content:flex-end;pointer-events:auto}
+  #actions button{background:rgba(15,30,40,.94);border:1px solid rgba(255,255,255,.18);
+    color:#fff;font:inherit;font-size:11.5px;font-weight:800;padding:6px 10px;border-radius:10px}
+  #btnInst{background:linear-gradient(180deg,#fcd116,#e0b400);color:#14202b;border:none}
+  #panneau{position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;
+    background:rgba(5,12,18,.62);padding:16px}
+  #panneau.on{display:flex}
+  #panCarte{width:100%;max-width:360px;background:#0f222e;border:1px solid rgba(255,255,255,.16);
+    border-radius:18px;padding:16px;box-shadow:0 18px 50px rgba(0,0,0,.6)}
+  #panTitre{font-size:16px;font-weight:900;margin-bottom:10px}
+  #panCorps{font-size:13px;line-height:1.55;color:#d7e6ef}
+  #panCorps .ligne{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:8px 0}
+  #panCorps button{background:#fcd116;color:#14202b;border:none;border-radius:9px;
+    font:inherit;font-weight:900;font-size:12px;padding:7px 11px}
+  #panCorps button:disabled{background:#3a4b56;color:#8b9aa4}
+  #panFermer{width:100%;margin-top:12px;background:rgba(255,255,255,.1);color:#fff;border:none;
+    border-radius:11px;padding:11px;font:inherit;font-weight:800}
   #mat{display:flex;gap:5px;pointer-events:none;flex-wrap:wrap}
   .mp{background:rgba(15,30,40,.85);border:1px solid rgba(255,255,255,.1);border-radius:9px;
     padding:3px 7px;font-size:11px;font-weight:800;color:#cfd8dc}
@@ -68,17 +95,26 @@
     <div class="pill" id="pop">👥 <b>0</b></div>
     <div class="pill" id="bon">😊 <b>50%</b></div>
     <div class="pill" id="niv">⭐ <b>1</b></div>
+    <div class="pill" id="auto">🏛️ <b>AUTO</b></div>
   </div>
   <div id="mat">
     <div class="mp">🔩 Acier <span id="m_acier">0</span></div>
     <div class="mp">🪵 Bois <span id="m_bois">0</span></div>
     <div class="mp">🧴 Plastique <span id="m_plast">0</span></div>
   </div>
+  <div id="actions">
+    <button id="btnMat">🛒 Matériaux</button>
+    <button id="btnInst">📲 Installer</button>
+  </div>
 </div>
 
 <div id="bar"></div>
 <div id="zoom"><button id="zin">+</button><button id="zout">−</button></div>
 <div id="toast"></div>
+<div id="panneau"><div id="panCarte">
+  <div id="panTitre"></div><div id="panCorps"></div>
+  <button id="panFermer">FERMER</button>
+</div></div>
 <div id="info"></div>
 
 <div id="start" class="ecran">
@@ -243,10 +279,12 @@ const CAT = {
   hopital:  {nom:'Hôpital',    ico:'🏥', prix:820,  mat:{acier:4,plast:2},  cat:'svc', rayon:115, key:'sante', niv:3},
   parc:     {nom:'Parc',       ico:'🌳', prix:160,  mat:{bois:1},           cat:'svc', rayon:70, key:'parc', niv:1},
   ecole:    {nom:'École',      ico:'🏫', prix:520,  mat:{bois:3,acier:1},   cat:'svc', rayon:95, key:'ecole', niv:2},
+  mairie:   {nom:'Mairie',     ico:'🏛️', prix:1600, mat:{acier:8,bois:5},   cat:'svc', rayon:140, key:'admin', niv:1, auto:true},
+  aeroport: {nom:'Aéroport',   ico:'✈️', prix:2600, mat:{acier:12,bois:8,plast:8}, cat:'eco', gain:190, cap:640, niv:2, aeroport:true},
   bulldozer:{nom:'Détruire',   ico:'🚜', prix:15,   mat:{},                 cat:'base'}
 };
 const ORDRE = ['main','route','maison','immeuble','commerce','bureau','usine',
-  'centrale','eau','police','pompier','hopital','parc','ecole','bulldozer'];
+  'centrale','eau','police','pompier','hopital','parc','ecole','mairie','aeroport','bulldozer'];
 
 /* ---------------- meshes ---------------- */
 const routes = [];   // meshes de route fusionnables
@@ -300,6 +338,27 @@ function meshBatiment(t, cat){
   if(t.type === 'police' || t.type === 'pompier') h = 15;
   if(t.type === 'parc') h = 2;
 
+  if(t.type === 'aeroport'){
+    const lg = 42 + niv*14;
+    const piste = new THREE.Mesh(new THREE.BoxGeometry(11, 0.8, lg), MAT.asphalte2 || MAT.route);
+    piste.position.set(0, 0.5, -lg/2 + 6); g.add(piste);
+    for(let k=0;k<6;k++){
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(1.1, lg*0.07), MAT.blanc);
+      m.rotation.x = -Math.PI/2; m.position.set(0, 1, -lg + 10 + k*(lg*0.13)); g.add(m);
+    }
+    const term = new THREE.Mesh(new THREE.BoxGeometry(10, 7 + niv*2, 9),
+      new THREE.MeshLambertMaterial({color:0xe8eef2}));
+    term.position.set(0, (7+niv*2)/2 + 0.4, 5); g.add(term);
+    const verre = new THREE.Mesh(new THREE.BoxGeometry(10.4, 2.2, 9.4), MAT.vitre);
+    verre.position.set(0, 5 + niv, 5); g.add(verre);
+    const tour = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 2, 12 + niv*6, 8),
+      new THREE.MeshLambertMaterial({color:0xd7dee4}));
+    tour.position.set(-6, (12+niv*6)/2, 6); g.add(tour);
+    const salle = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, 2.4, 10), MAT.vitre);
+    salle.position.set(-6, 12 + niv*6, 6); g.add(salle);
+    g.userData.aeroport = true;
+    return g;
+  }
   if(t.type === 'parc'){
     const g2 = new THREE.Mesh(new THREE.CylinderGeometry(0.6,0.6,5,6), MAT.noir);
     g2.position.y = 2.5; g.add(g2);
@@ -449,9 +508,18 @@ function recalculer(){
   let b = 52;
   const r = habit || 1;
   b += (res.alim/r)*10 + (res.eau/r)*12 + (res.securite/r)*6 + (res.feu/r)*6 + (res.sante/r)*6 + (res.ecole/r)*6;
-  let parcs = 0;
-  for(let i=0;i<N;i++) for(let j=0;j<N;j++) if(cases[i][j].parc) parcs++;
+  let parcs = 0, mairies = 0, aeroports = 0;
+  for(let i=0;i<N;i++) for(let j=0;j<N;j++){
+    const t = cases[i][j];
+    if(t.parc) parcs++;
+    if(t.type === 'mairie') mairies++;
+    if(t.type === 'aeroport') aeroports++;
+  }
+  S.mairie = mairies;
+  S.aeroports = aeroports;
   b += Math.min(10, parcs*2.2);
+  b += Math.min(8, mairies*4);
+  b += Math.min(9, aeroports*4.5);
   S.bonheur = Math.max(0, Math.min(100, Math.round(b)));
 
   // population
@@ -475,6 +543,10 @@ function recalculer(){
 
 function tick(dt){
   S.temps += dt;
+  if(S.mairie > 0){
+    S.autoT = (S.autoT || 0) + dt;
+    if(S.autoT >= 6){ S.autoT = 0; collecteAuto(); }
+  }
   if(S.popCible !== undefined && S.pop < S.popCible){
     S.pop = Math.min(S.popCible, S.pop + Math.max(0.6, (S.popCible - S.pop) * dt * 0.55));
   }
@@ -513,6 +585,11 @@ function recolter(t){
     toast('+' + n + ' ' + ({acier:'acier',bois:'bois',plast:'plastique'}[kind]));
     return true;
   }
+  if(t.type === 'aeroport' && t.caisse >= 8){
+    const gainA = Math.floor(t.caisse); S.argent += gainA; t.caisse = 0;
+    toast('✈️ Tourisme +' + gainA + ' €');
+    return true;
+  }
   if(t.caisse < 8) return false;
   const gain = Math.floor(t.caisse);
   S.argent += gain; t.caisse = 0;
@@ -530,8 +607,106 @@ function recolter(t){
   return true;
 }
 
+/* ---------------- automatisation (mairie) ---------------- */
+function collecteAuto(){
+  let total = 0, mats = 0;
+  for(let i=0;i<N;i++) for(let j=0;j<N;j++){
+    const t = cases[i][j];
+    if(!t.type || t.type==='vide') continue;
+    const cat = CAT[t.type]; if(!cat) continue;
+    if(cat.taux || cat.gain){
+      if(t.caisse >= 20){ total += Math.floor(t.caisse); t.caisse = 0; }
+    } else if(t.type === 'usine' && t.stock > 0){
+      const k = t.matKind || 'acier';
+      S[k] += t.stock; mats += t.stock; t.stock = 0;
+    }
+  }
+  if(total > 0 || mats > 0){
+    S.argent += total;
+    toast('🏛️ Auto : +' + total + ' €' + (mats ? ' · +' + mats + ' matériaux' : ''));
+    majHUD();
+  }
+}
+
+/* ---------------- panneau ---------------- */
+function ouvrirPanneau(titre, corps){
+  $('#panTitre').innerHTML = titre;
+  $('#panCorps').innerHTML = corps;
+  $('#panneau').classList.add('on');
+}
+function fermerPanneau(){ $('#panneau').classList.remove('on'); }
+
+const PRIX_MAT = {acier:32, bois:24, plast:46};
+const NOM_MAT = {acier:'acier', bois:'bois', plast:'plastique'};
+
+function panneauMateriaux(){
+  let corps = '<div style="opacity:.8;margin-bottom:8px">Achète des matériaux pour améliorer tes aéroports.</div>';
+  for(const k of ['acier','bois','plast']){
+    corps += '<div class="ligne"><span>'+({acier:'🔩',bois:'🪵',plast:'🧴'}[k])+' '+
+      NOM_MAT[k].charAt(0).toUpperCase()+NOM_MAT[k].slice(1)+' · '+PRIX_MAT[k]+' €</span>'+
+      '<span><button data-mat="'+k+'" data-q="1">+1</button> '+
+      '<button data-mat="'+k+'" data-q="5">+5</button></span></div>';
+  }
+  corps += '<div class="ligne" style="opacity:.75;font-size:12px"><span>Stock</span><span>'+
+    '🔩 '+S.acier+' · 🪵 '+S.bois+' · 🧴 '+S.plast+'</span></div>';
+  ouvrirPanneau('🛒 Matériaux', corps);
+  document.querySelectorAll('#panCorps button[data-mat]').forEach(b=>{
+    b.onclick = ()=> acheterMat(b.dataset.mat, +b.dataset.q);
+  });
+}
+
+function acheterMat(k, q){
+  const cout = PRIX_MAT[k] * q;
+  if(S.argent < cout){ toast('Pas assez d\'argent', true); return; }
+  S.argent -= cout; S[k] += q;
+  majHUD(); toast('+' + q + ' ' + NOM_MAT[k]);
+  panneauMateriaux();
+}
+
+function coutAmelioration(niv){
+  if(niv === 1) return {acier:8, bois:6, plast:4};
+  if(niv === 2) return {acier:14, bois:10, plast:10};
+  return null;
+}
+
+function panneauAeroport(t){
+  if(t.type !== 'aeroport') return;
+  const c = coutAmelioration(t.niv);
+  let corps = '<div class="ligne"><span>Niveau</span><b>'+t.niv+' / 3</b></div>';
+  corps += '<div class="ligne"><span>Tourisme</span><b>+'+Math.round(CAT.aeroport.gain*t.niv)+' €/min</b></div>';
+  if(c){
+    corps += '<div style="margin-top:10px;font-weight:800">Améliorer au niveau '+(t.niv+1)+'</div>';
+    corps += '<div class="ligne"><span>Il faut</span><span>🔩 '+c.acier+' · 🪵 '+c.bois+' · 🧴 '+c.plast+'</span></div>';
+    const ok = S.acier>=c.acier && S.bois>=c.bois && S.plast>=c.plast;
+    corps += '<div class="ligne"><button id="panAmel" '+(ok?'':'disabled')+'>'+
+      (ok?'AMÉLIORER':'MATÉRIAUX MANQUANTS')+'</button></div>';
+    if(!ok) corps += '<div class="ligne"><button id="panShop">🛒 Acheter les matériaux</button></div>';
+  } else {
+    corps += '<div style="margin-top:10px;color:#7ee787;font-weight:800">Aéroport international · niveau maximum</div>';
+  }
+  ouvrirPanneau('✈️ Aéroport', corps);
+  const ba = document.getElementById('panAmel');
+  if(ba) ba.onclick = ()=> ameliorerAeroport(t);
+  const bs = document.getElementById('panShop');
+  if(bs) bs.onclick = ()=> panneauMateriaux();
+}
+
+function ameliorerAeroport(t){
+  const c = coutAmelioration(t.niv); if(!c) return;
+  if(S.acier<c.acier || S.bois<c.bois || S.plast<c.plast){ toast('Matériaux insuffisants', true); return; }
+  S.acier -= c.acier; S.bois -= c.bois; S.plast -= c.plast;
+  t.niv++;
+  if(t.bati) monde.remove(t.bati);
+  t.bati = meshBatiment(t, CAT.aeroport);
+  t.bati.scale.set(0.4,0.4,0.4);
+  monde.add(t.bati);
+  S.xp += 60; recalculer(); majHUD(); fermerPanneau();
+  toast('✈️ Aéroport niveau ' + t.niv + ' !');
+}
+
 /* ---------------- HUD ---------------- */
 function majHUD(){
+  const pa = $('#auto'); if(pa) pa.classList.toggle('on', (S.mairie||0) > 0);
   $('#cash b').textContent = Math.round(S.argent).toLocaleString('fr-FR');
   $('#pop b').textContent = S.pop.toLocaleString('fr-FR');
   $('#bon b').textContent = S.bonheur + '%';
@@ -590,6 +765,9 @@ function majCamera(){
   camera.lookAt(camTarget.x, 0, camTarget.z);
 }
 majCamera();
+$('#btnMat').onclick = ()=> panneauMateriaux();
+$('#panFermer').onclick = ()=> fermerPanneau();
+$('#panneau').onclick = (e)=>{ if(e.target.id === 'panneau') fermerPanneau(); };
 $('#zin').onclick = ()=>{ camDist = Math.max(120, camDist-45); majCamera(); };
 $('#zout').onclick = ()=>{ camDist = Math.min(560, camDist+45); majCamera(); };
 
@@ -665,7 +843,10 @@ canvas.addEventListener('pointerup', e=>{
     const t = caseEcran(e.clientX, e.clientY);
     if(t){
       if(S.outil === 'main'){
-        if(t.bati){ if(!recolter(t)) montrerInfo(t); }
+        if(t.bati){
+          if(t.type === 'aeroport'){ if(t.caisse >= 20) recolter(t); panneauAeroport(t); }
+          else if(!recolter(t)) montrerInfo(t);
+        }
         else if(t.type) montrerInfo(t);
       } else if(S.outil === 'bulldozer'){
         detruire(t); routesDirty = true;
@@ -787,11 +968,38 @@ $('#go').onclick = demarrer;
 $('#again').onclick = demarrer;
 
 /* API de test */
+
+/* ---------------- PWA : installation ---------------- */
+let installEvent = null;
+const btnInst = document.getElementById('btnInst');
+const dejaInstalle = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+if(dejaInstalle) btnInst.style.display = 'none';
+window.addEventListener('beforeinstallprompt', (e)=>{
+  e.preventDefault(); installEvent = e; btnInst.style.display = '';
+});
+btnInst.onclick = async ()=>{
+  if(installEvent){
+    installEvent.prompt();
+    try{ await installEvent.userChoice; }catch(_){}
+    installEvent = null;
+    return;
+  }
+  ouvrirPanneau('📲 Installer le jeu',
+    'Sur Android : menu ⋮ du navigateur puis « Installer l\'application ».'
+    + '<div style="margin-top:8px">Sur iPhone : bouton Partager ⬆️ puis « Sur l\'écran d\'accueil ».</div>'
+    + '<div style="margin-top:8px;opacity:.75">Une fois installé, le jeu s\'ouvre en plein écran et marche hors ligne.</div>');
+};
+window.addEventListener('appinstalled', ()=>{ btnInst.style.display = 'none'; });
+if('serviceWorker' in navigator && location.protocol === 'https:'){
+  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+}
+
 window.G = {
   S, cases, CAT, monde, scene, poser: (t)=>appliquer(t), choisirOutil,
   poserBatiment, poserRoute, detruire, recolter, tick, recalculer, demarrer,
   get camDist(){ return camDist; }, set camDist(v){ camDist = v; },
-  majCamera, N
+  majCamera, N,
+  panneauAeroport, ameliorerAeroport, panneauMateriaux, acheterMat, collecteAuto, fermerPanneau
 };
 </script>
 </body>
