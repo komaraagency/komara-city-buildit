@@ -86,7 +86,32 @@
     box-shadow:0 8px 24px rgba(252,209,22,.32);cursor:pointer;font-family:inherit}
   #vis{display:none}
   #vis.on{display:flex;color:#ffd166}
+  #col{display:none}
+  #col.on{display:flex;color:#8ce99a}
   #vis .pt{width:7px;height:7px;border-radius:50%;background:#ffd166}
+  /* ---- mode paysage (rotation) ---- */
+  @media (orientation: landscape){
+    #top{padding:5px 10px 4px;gap:4px}
+    #ligne1{gap:5px}
+    .pill{padding:3px 7px;font-size:11px;border-radius:9px}
+    .pill b{font-size:12px}
+    #mat{font-size:10px;gap:6px}
+    #actions button{padding:4px 8px;font-size:11px}
+    #bar{bottom:5px;padding:5px 6px;gap:5px}
+    #bar .b{min-width:52px;padding:6px 6px 4px;font-size:9px}
+    #bar .b span{font-size:15px}
+    #start h1{font-size:20px}
+    #start ul{font-size:12px}
+    #panCarte{max-height:94vh;overflow-y:auto;padding:12px 14px}
+    #panCarte h2{font-size:15px;margin:0 0 6px}
+    .ligne{font-size:12px;padding:3px 0}
+    #zoom{bottom:auto;top:50%;transform:translateY(-50%);right:8px}
+  }
+  @media (max-height:420px){
+    #bar .b i{display:none}
+    #start{overflow-y:auto;padding:12px}
+    #start ul{display:none}
+  }
 </style>
 </head>
 <body>
@@ -98,6 +123,7 @@
     <div class="pill" id="pop">👥 <b>0</b></div>
     <div class="pill" id="bon">😊 <b>50%</b></div>
     <div class="pill" id="vis">👤 <b>0</b></div>
+    <div class="pill" id="col">🏡 <b>0</b></div>
     <div class="pill" id="niv">⭐ <b>1</b></div>
     <div class="pill" id="auto">🏛️ <b>AUTO</b></div>
   </div>
@@ -107,6 +133,7 @@
     <div class="mp">🧴 Plastique <span id="m_plast">0</span></div>
   </div>
   <div id="actions">
+    <button id="btnMarche">🤝 Marché</button>
     <button id="btnMat">🛒 Matériaux</button>
     <button id="btnInst">📲 Installer</button>
   </div>
@@ -132,6 +159,7 @@
     <li>Tape les bâtiments pour récolter les loyers</li>
   </ul>
   <button id="go">JOUER</button>
+  <button id="goSave" style="display:none;margin-top:8px;background:rgba(255,255,255,.14)">CONTINUER MA VILLE</button>
 </div>
 
 <div id="end" class="ecran cache">
@@ -256,7 +284,7 @@ const grilleGeo = new THREE.BufferGeometry();
 const S = {
   argent: 12000, pop: 0, bonheur: 50, xp: 0, niveau: 1,
   acier: 6, bois: 4, plast: 2, nbUsines: 0,
-  outil: 'main', mois: 0, temps: 0, collecte: 0, visiteurs: 0, vols: 0
+  outil: 'main', mois: 0, temps: 0, collecte: 0, visiteurs: 0, vols: 0, touristes: 0, colons: 0, saveT: 0
 };
 const cases = [];
 for(let i=0;i<N;i++){
@@ -361,7 +389,7 @@ function meshBatiment(t, cat){
     const salle = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, 2.4, 10), MAT.vitre);
     salle.position.set(-6, 12 + niv*6, 6); g.add(salle);
     g.userData.aeroport = true;
-    if(niv >= 3){
+    if(niv >= 2){
       const av = new THREE.Group();
       const fus = new THREE.Mesh(new THREE.CylinderGeometry(0.9,0.9,7,8),
         new THREE.MeshLambertMaterial({color:0xf2f5f7}));
@@ -554,9 +582,9 @@ function recalculer(){
     pop += capa;
   }
   // les visiteurs de l'aeroport font monter la population
-  const bonus = Math.min(0.40, S.visiteurs / 320);
+  const bonus = Math.min(0.40, S.touristes / 320);
   if(bonus > 0) pop = Math.round(pop * (1 + bonus));
-  S.popCible = pop;
+  S.popCible = pop + (S.colons || 0);
   if(S.pop > pop) S.pop = pop;
 
   // niveau
@@ -578,7 +606,7 @@ function tick(dt){
     const av = a.bati.userData.avion;
     if(av){
       a.volT = (a.volT || 0) + dt;
-      const cyc = (a.volT % 11) / 11;
+      const cyc = (a.volT % (a.niv >= 3 ? 8 : 15)) / (a.niv >= 3 ? 8 : 15);
       av.visible = cyc < 0.42;
       if(av.visible){
         const k = cyc / 0.42;
@@ -588,12 +616,24 @@ function tick(dt){
     }
   }
   if(flux > 0){
-    S.visiteurs = Math.min(700, S.visiteurs + flux * dt);
-    if(!S.msgVis && S.visiteurs > 12){ S.msgVis = true; toast('✈️ Vols internationaux : les visiteurs arrivent'); }
+    S.touristes = Math.min(700, S.touristes + flux * dt);
+    if(!S.msgVis && S.touristes > 12){ S.msgVis = true; toast('✈️ Vols internationaux : les visiteurs arrivent'); }
   }
-  S.visiteurs = Math.max(0, S.visiteurs - S.visiteurs * 0.009 * dt);
-  if(S.visiteurs > 1) S.argent += S.visiteurs * 0.03 * dt;
-  const boost = 1 + Math.min(0.9, S.visiteurs / 320);
+  S.touristes = Math.max(0, S.touristes - S.touristes * 0.009 * dt);
+  if(S.touristes > 1) S.argent += S.touristes * 0.03 * dt;
+  if(S.touristes >= 30){
+    S.colT = (S.colT || 0) + dt;
+    if(S.colT > 10){
+      S.colT = 0;
+      const k = Math.min(6, Math.max(1, Math.floor(S.touristes / 25)));
+      S.colons = (S.colons || 0) + k;
+      S.touristes = Math.max(0, S.touristes - k * 8);
+      toast('🏡 ' + k + (k > 1 ? ' visiteurs s\'installent' : ' visiteur s\'installe') + ' dans la ville');
+      recalculer();
+    }
+  }
+  majVoitures(dt);
+  const boost = 1 + Math.min(0.9, S.touristes / 320);
 
   if(S.popCible !== undefined && S.pop < S.popCible){
     S.pop = Math.min(S.popCible, S.pop + Math.max(0.6, (S.popCible - S.pop) * dt * 0.55 * boost));
@@ -722,7 +762,7 @@ function panneauAeroport(t){
   const c = coutAmelioration(t.niv);
   let corps = '<div class="ligne"><span>Niveau</span><b>'+t.niv+' / 3</b></div>';
   corps += '<div class="ligne"><span>Tourisme</span><b>+'+Math.round(CAT.aeroport.gain*t.niv)+' €/min</b></div>';
-  corps += '<div class="ligne"><span>Visiteurs</span><b>'+(t.niv>=2?Math.round(S.visiteurs):'niv. 3')+'</b></div>';
+  corps += '<div class="ligne"><span>Visiteurs</span><b>'+(t.niv>=2?Math.round(S.touristes):'niv. 3')+'</b></div>';
   if(c){
     corps += '<div style="margin-top:10px;font-weight:800">Améliorer au niveau '+(t.niv+1)+'</div>';
     corps += '<div class="ligne"><span>Il faut</span><span>🔩 '+c.acier+' · 🪵 '+c.bois+' · 🧴 '+c.plast+'</span></div>';
@@ -760,7 +800,9 @@ function majHUD(){
   $('#pop b').textContent = S.pop.toLocaleString('fr-FR');
   $('#bon b').textContent = S.bonheur + '%';
   const pv = $('#vis');
-  if(pv){ const v = Math.round(S.visiteurs || 0); pv.classList.toggle('on', v > 0); pv.querySelector('b').textContent = v; }
+  const pc = document.getElementById('col');
+  if(pc){ const vc = Math.round(S.colons || 0); pc.classList.toggle('on', vc > 0); pc.querySelector('b').textContent = vc; }
+  if(pv){ const v = Math.round(S.touristes || 0); pv.classList.toggle('on', v > 0); pv.querySelector('b').textContent = v; }
   $('#bon').style.color = S.bonheur>66?'#7ee787':S.bonheur>40?'#fcd116':'#ff8a80';
   $('#niv b').textContent = S.niveau;
   $('#m_acier').textContent = S.acier;
@@ -816,6 +858,24 @@ function majCamera(){
   camera.lookAt(camTarget.x, 0, camTarget.z);
 }
 majCamera();
+
+/* ---------------- rotation / redimensionnement ---------------- */
+function redimensionner(){
+  const w = window.innerWidth, h = window.innerHeight;
+  renderer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.fov = (w > h) ? 54 : 48;
+  camera.updateProjectionMatrix();
+  majCamera();
+}
+window.addEventListener('resize', redimensionner);
+window.addEventListener('orientationchange', ()=> setTimeout(redimensionner, 220));
+if(window.screen && window.screen.orientation && window.screen.orientation.addEventListener){
+  window.screen.orientation.addEventListener('change', ()=> setTimeout(redimensionner, 220));
+}
+redimensionner();
+
+$('#btnMarche').onclick = ()=> panneauMarche();
 $('#btnMat').onclick = ()=> panneauMateriaux();
 $('#panFermer').onclick = ()=> fermerPanneau();
 $('#panneau').onclick = (e)=>{ if(e.target.id === 'panneau') fermerPanneau(); };
@@ -967,7 +1027,10 @@ function boucle(now){
   if(S.joue){
     tick(dt);
     accum += dt;
-    if(accum > 1){ accum = 0; recalculer(); majHUD(); }
+    if(accum > 1){ accum = 0; recalculer(); majHUD();
+      S.saveT = (S.saveT || 0) + 1;
+      if(S.saveT >= 8) sauvegarder();
+    }
   }
   // animation de pose + pièces
   for(let i=0;i<N;i++) for(let j=0;j<N;j++){
@@ -996,7 +1059,10 @@ requestAnimationFrame(boucle);
 const S_Etat = {joue:false};
 S.joue = false;
 
-function demarrer(){
+function demarrer(avecSauvegarde){
+  if(!avecSauvegarde && aSauvegarde() && !window._forceNew){
+    if(!confirm('Ta ville sauvegardée va être effacée. Continuer ?')) return;
+  }
   // remise à zéro
   for(let i=0;i<N;i++) for(let j=0;j<N;j++){
     const t = cases[i][j];
@@ -1007,19 +1073,292 @@ function demarrer(){
   routesDirty = true;
   S.argent = 12000; S.pop = 0; S.popCible = 0; S.bonheur = 50; S.xp = 0; S.niveau = 1; S.nbUsines = 0;
   S.acier = 6; S.bois = 4; S.plast = 2; S.outil = 'main';
-  S.visiteurs = 0; S.msgVis = false; S.mairie = 0;
+  S.touristes = 0; S.colons = 0; S.colT = 0; S.msgVis = false; S.mairie = 0;
   camTarget.set(0,0,0); camDist = 250; camPitch = 0.95; majCamera();
   $('#start').classList.add('cache');
   $('#end').classList.add('cache');
   S.joue = true;
+  if(avecSauvegarde) restaurer(); else effacerSauvegarde();
+  const bsv = document.getElementById('goSave');
+  if(bsv) bsv.style.display = aSauvegarde() ? 'block' : 'none';
   construireBarre(); recalculer(); majHUD();
   toast('Trace ta première route 🛣️');
 }
 
-$('#go').onclick = demarrer;
+$('#go').onclick = ()=>{ demarrer(false); };
+document.getElementById('goSave').onclick = ()=>{ demarrer(true); };
+if(aSauvegarde()) document.getElementById('goSave').style.display = 'block';
+document.getElementById('goSave').textContent = 'CONTINUER MA VILLE';
 $('#again').onclick = demarrer;
 
 /* API de test */
+
+
+
+/* ---------------- circulation automobile ---------------- */
+const voitures = [];
+let carT = 0;
+const CAR_HAUTEUR = 1.1;
+
+function tuilesRoute(){
+  const r = [];
+  for(let i=0;i<N;i++) for(let j=0;j<N;j++) if(cases[i][j].route) r.push([i,j]);
+  return r;
+}
+function nouvelleVoiture(){
+  const g = new THREE.Group();
+  const coul = [0xd94a3d, 0x2f6fbf, 0xf0c419, 0xe8e8ea, 0x2b2f36, 0x2e8b57][Math.floor(Math.random()*6)];
+  const c1 = new THREE.Mesh(new THREE.BoxGeometry(2.1, 1.1, 3.9),
+    new THREE.MeshLambertMaterial({color:coul}));
+  c1.position.y = 0.55; g.add(c1);
+  const c2 = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.9, 2.0), MAT.vitre);
+  c2.position.set(0, 1.5, -0.2); g.add(c2);
+  g.visible = false;
+  g.userData.dyn = true;
+  scene.add(g);
+  return {g, i:0, j:0, ni:0, nj:0, p:1, v: 7 + Math.random()*5};
+}
+function placeVoiture(v, i, j){
+  v.i = i; v.j = j; v.ni = i; v.nj = j; v.p = 1;
+  v.g.position.set(cases[i][j].x, 0.1, cases[i][j].z);
+  v.g.visible = true;
+}
+function majVoitures(dt){
+  // entretien du parc
+  const routes = tuilesRoute();
+  const cible = Math.min(26, Math.floor(routes.length / 3));
+  carT += dt;
+  if(carT > 0.5){
+    carT = 0;
+    if(voitures.length < cible && routes.length > 0){
+      const v = nouvelleVoiture();
+      const c = routes[Math.floor(Math.random()*routes.length)];
+      placeVoiture(v, c[0], c[1]);
+      voitures.push(v);
+    } else if(voitures.length > cible && voitures.length){
+      const v = voitures.pop();
+      scene.remove(v.g);
+    }
+  }
+  for(const v of voitures){
+    if(!v.g.visible) continue;
+    if(v.p >= 1){
+      // choisir une direction libre
+      const dirs = [[1,0],[-1,0],[0,1],[0,-1]];
+      const libres = [];
+      for(const dd of dirs){
+        const a = v.i + dd[0], b = v.j + dd[1];
+        if(a<0||b<0||a>=N||b>=N) continue;
+        if(!cases[a][b].route) continue;
+        if(a === v.pi && b === v.pj && libres.length) continue; // eviter demi-tour si possible
+        libres.push(dd);
+      }
+      if(!libres.length){
+        v.ni = v.i; v.nj = v.j; v.p = 1;
+        v.g.visible = false;
+        continue;
+      }
+      const dd = libres[Math.floor(Math.random()*libres.length)];
+      v.pi = v.i; v.pj = v.j;
+      v.ni = v.i + dd[0]; v.nj = v.j + dd[1];
+      v.p = 0;
+    }
+    const t0 = cases[v.i][v.j], t1 = cases[v.ni][v.nj];
+    v.p = Math.min(1, v.p + (v.v * dt) / TS);
+    const x = t0.x + (t1.x - t0.x) * v.p;
+    const z = t0.z + (t1.z - t0.z) * v.p;
+    v.g.position.set(x, 0.1, z);
+    v.g.rotation.y = Math.atan2(t1.x - t0.x, t1.z - t0.z);
+    if(v.p >= 1){ v.i = v.ni; v.j = v.nj; }
+  }
+}
+
+
+/* ---------------- marche entre joueurs ---------------- */
+const MARCHE_URL = 'https://solene-ff7bb13d.base44.app/functions/marcheVilles';
+const NOM_KEY = 'komara_city_nom';
+function monNomVille(){
+  try{ return localStorage.getItem(NOM_KEY) || 'Ma ville'; }catch(e){ return 'Ma ville'; }
+}
+function setNomVille(v){
+  try{ localStorage.setItem(NOM_KEY, String(v).slice(0,40)); }catch(e){}
+}
+function monJoueur(){
+  let id = '';
+  try{ id = localStorage.getItem('komara_city_joueur') || ''; }catch(e){}
+  if(!id){
+    id = 'j' + Math.random().toString(36).slice(2, 9);
+    try{ localStorage.setItem('komara_city_joueur', id); }catch(e){}
+  }
+  return id;
+}
+const MAT_NOM = {acier:'Acier', bois:'Bois', plast:'Plastique'};
+let MARCHE_OFFRES = [];
+let MARCHE_ETAT = '';
+
+async function marcheAPI(action, data){
+  const r = await fetch(MARCHE_URL, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(Object.assign({action}, data || {}))
+  });
+  const j = await r.json().catch(()=>({}));
+  if(!r.ok || j.ok === false) throw new Error(j.erreur || j.message || j.detail || 'service indisponible');
+  return j;
+}
+
+async function marcheLister(){
+  MARCHE_ETAT = 'Chargement…';
+  majPanneauMarche();
+  try{
+    const j = await marcheAPI('list');
+    MARCHE_OFFRES = j.offres || [];
+    MARCHE_ETAT = MARCHE_OFFRES.length ? '' : 'Aucune offre pour le moment.';
+  }catch(e){
+    MARCHE_OFFRES = [];
+    MARCHE_ETAT = 'Marché mondial indisponible pour le moment (' + e.message + '). Réessaie plus tard.';
+  }
+  majPanneauMarche();
+}
+
+async function marchePublier(mat, qte, prix){
+  if((S[mat] || 0) < qte){ toast('Tu n\'as pas assez de ' + MAT_NOM[mat], true); return; }
+  try{
+    await marcheAPI('publier', {mat, qte, prix, ville: monNomVille(), joueur: monJoueur()});
+    S[mat] -= qte;
+    toast('🤝 Offre publiée : ' + qte + ' ' + MAT_NOM[mat] + ' pour ' + prix + ' €');
+    majHUD(); sauvegarder(); marcheLister();
+  }catch(e){
+    toast('Publication impossible : ' + e.message, true);
+  }
+}
+
+async function marcheAcheter(id){
+  const o = MARCHE_OFFRES.find(x => x.id === id);
+  if(!o) return;
+  if(S.argent < o.prix){ toast('Pas assez d\'argent', true); return; }
+  try{
+    const j = await marcheAPI('acheter', {id, acheteur: monNomVille()});
+    S.argent -= (j.prix || o.prix);
+    S[j.mat] = (S[j.mat] || 0) + (j.qte || o.qte);
+    toast('📦 Livraison de ' + j.ville + ' : ' + j.qte + ' ' + MAT_NOM[j.mat]);
+    majHUD(); sauvegarder(); marcheLister();
+  }catch(e){
+    toast('Achat impossible : ' + e.message, true);
+  }
+}
+
+function majPanneauMarche(){
+  const el = document.getElementById('panCorps');
+  const nom = monNomVille();
+  let h = '<div class="ligne"><span>Ma ville</span>'
+    + '<input id="mkNom" value="' + nom.replace(/"/g, '&quot;') + '" '
+    + 'style="width:130px;padding:4px 6px;border-radius:7px;border:1px solid rgba(255,255,255,.2);'
+    + 'background:rgba(255,255,255,.08);color:#fff;font-size:13px"></div>'
+    + '<div class="ligne"><span>Mes matériaux</span><b>🔩' + Math.round(S.acier||0)
+    + ' 🪵' + Math.round(S.bois||0) + ' 🧴' + Math.round(S.plast||0) + '</b></div>'
+    + '<div style="margin:10px 0 6px;font-size:12px;font-weight:800;color:#fcd116">VENDRE EN GROS</div>'
+    + '<div class="ligne"><span>Matériau</span>'
+    + '<select id="mkMat" style="padding:4px 6px;border-radius:7px;border:1px solid rgba(255,255,255,.2);'
+    + 'background:#16232e;color:#fff;font-size:13px">'
+    + '<option value="acier">Acier</option><option value="bois">Bois</option>'
+    + '<option value="plast">Plastique</option></select></div>'
+    + '<div class="ligne"><span>Quantité</span>'
+    + '<input id="mkQte" type="number" value="10" min="1" max="500" '
+    + 'style="width:80px;padding:4px 6px;border-radius:7px;border:1px solid rgba(255,255,255,.2);'
+    + 'background:rgba(255,255,255,.08);color:#fff;font-size:13px"></div>'
+    + '<div class="ligne"><span>Prix total (€)</span>'
+    + '<input id="mkPrix" type="number" value="250" min="1" '
+    + 'style="width:90px;padding:4px 6px;border-radius:7px;border:1px solid rgba(255,255,255,.2);'
+    + 'background:rgba(255,255,255,.08);color:#fff;font-size:13px"></div>'
+    + '<button id="mkPublier" style="width:100%;margin-top:8px;padding:10px;border:none;border-radius:10px;'
+    + 'background:#fcd116;color:#14202b;font-weight:900;font-size:13px">PUBLIER MON OFFRE</button>'
+    + '<div style="margin:14px 0 6px;font-size:12px;font-weight:800;color:#8fd8ff">OFFRES DES AUTRES VILLES</div>';
+  if(MARCHE_ETAT) h += '<div style="opacity:.8;font-size:12px;margin-bottom:6px">' + MARCHE_ETAT + '</div>';
+  for(const o of MARCHE_OFFRES){
+    h += '<div class="ligne"><span>🏙️ ' + (o.ville || 'Ville') + ' · ' + MAT_NOM[o.mat] + ' ×' + o.qte
+      + '</span><b>' + o.prix + ' €</b></div>'
+      + '<button data-achat="' + o.id + '" style="width:100%;margin:0 0 8px;padding:8px;border:none;'
+      + 'border-radius:9px;background:rgba(255,255,255,.12);color:#fff;font-weight:800;font-size:12px">'
+      + 'ACHETER ET FAIRE LIVRER</button>';
+  }
+  if(!MARCHE_OFFRES.length && !MARCHE_ETAT) h += '<div style="opacity:.7;font-size:12px">Marché vide.</div>';
+  el.innerHTML = h;
+
+  const inp = document.getElementById('mkNom');
+  if(inp) inp.onchange = ()=> setNomVille(inp.value.trim() || 'Ma ville');
+  document.getElementById('mkPublier').onclick = ()=>{
+    const mat = document.getElementById('mkMat').value;
+    const qte = Math.max(1, Math.round(Number(document.getElementById('mkQte').value) || 1));
+    const prix = Math.max(1, Math.round(Number(document.getElementById('mkPrix').value) || 1));
+    marchePublier(mat, qte, prix);
+  };
+  el.querySelectorAll('[data-achat]').forEach(b=>{
+    b.onclick = ()=> marcheAcheter(b.getAttribute('data-achat'));
+  });
+}
+
+function panneauMarche(){
+  ouvrirPanneau('🤝 Marché des villes', '');
+  MARCHE_ETAT = '';
+  majPanneauMarche();
+  marcheLister();
+}
+
+/* ---------------- sauvegarde locale ---------------- */
+const SAVE_KEY = 'komara_city_save_v2';
+function aSauvegarde(){ try{ return !!localStorage.getItem(SAVE_KEY); }catch(e){ return false; } }
+function effacerSauvegarde(){ try{ localStorage.removeItem(SAVE_KEY); }catch(e){} }
+function sauvegarder(){
+  if(!S.joue) return;
+  try{
+    const c = [];
+    for(let i=0;i<N;i++) for(let j=0;j<N;j++){
+      const t = cases[i][j];
+      if(t.route) c.push([i,j,'route']);
+      else if(t.type && t.type !== 'vide')
+        c.push([i,j,t.type,t.niv,Math.round(t.caisse||0),t.stock||0,t.matKind||'']);
+    }
+    localStorage.setItem(SAVE_KEY, JSON.stringify({
+      v:2, d:Date.now(),
+      s:{argent:Math.round(S.argent), bonheur:S.bonheur, xp:S.xp,
+         colons:S.colons||0, touristes:Math.round(S.touristes||0), temps:S.temps},
+      c:c
+    }));
+    S.saveT = 0;
+    return true;
+  }catch(e){ return false; }
+}
+function restaurer(){
+  let d = null;
+  try{ d = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); }catch(e){}
+  if(!d || !d.c) return false;
+  for(const e of d.c){
+    const i = e[0], j = e[1], type = e[2], niv = e[3] || 1, caisse = e[4] || 0, stock = e[5] || 0, mk = e[6];
+    const t = cases[i] && cases[i][j];
+    if(!t) continue;
+    if(type === 'route'){ t.route = true; routesDirty = true; continue; }
+    const cat = CAT[type];
+    if(!cat) continue;
+    t.type = type; t.niv = niv; t.caisse = caisse; t.cap = cat.cap || 0;
+    if(type === 'usine'){ t.matKind = mk || 'acier'; t.stock = stock; t.prodT = 0; S.nbUsines++; }
+    t.bati = meshBatiment(t, cat);
+    monde.add(t.bati);
+    t.bati.scale.set(1, 1, 1);
+  }
+  const s = d.s || {};
+  if(typeof s.argent === 'number') S.argent = s.argent;
+  if(typeof s.bonheur === 'number') S.bonheur = s.bonheur;
+  if(typeof s.xp === 'number') S.xp = s.xp;
+  S.colons = s.colons || 0;
+  S.touristes = s.touristes || 0;
+  S.temps = s.temps || 0;
+  S.pop = 0;
+  routesDirty = true;
+  recalculer();
+  majHUD();
+  return true;
+}
 
 /* ---------------- PWA : installation ---------------- */
 let installEvent = null;
@@ -1046,12 +1385,17 @@ if('serviceWorker' in navigator && location.protocol === 'https:'){
   window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
 }
 
+window.addEventListener('pagehide', ()=> sauvegarder());
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden) sauvegarder(); });
+
 window.G = {
   S, cases, CAT, monde, scene, poser: (t)=>appliquer(t), choisirOutil,
   poserBatiment, poserRoute, detruire, recolter, tick, recalculer, demarrer,
   get camDist(){ return camDist; }, set camDist(v){ camDist = v; },
   majCamera, N,
-  panneauAeroport, ameliorerAeroport, panneauMateriaux, acheterMat, collecteAuto, fermerPanneau
+  panneauAeroport, ameliorerAeroport, panneauMateriaux, acheterMat, collecteAuto, fermerPanneau,
+  sauvegarder, restaurer, aSauvegarde, effacerSauvegarde,
+  panneauMarche, marcheLister, marchePublier, marcheAcheter, voitures
 };
 </script>
 </body>
