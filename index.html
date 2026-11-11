@@ -84,6 +84,9 @@
   .ecran button{margin-top:18px;background:linear-gradient(180deg,#fcd116,#e0b400);color:#14202b;
     border:0;border-radius:13px;padding:14px 30px;font-size:14px;font-weight:900;letter-spacing:.7px;
     box-shadow:0 8px 24px rgba(252,209,22,.32);cursor:pointer;font-family:inherit}
+  #vis{display:none}
+  #vis.on{display:flex;color:#ffd166}
+  #vis .pt{width:7px;height:7px;border-radius:50%;background:#ffd166}
 </style>
 </head>
 <body>
@@ -94,6 +97,7 @@
     <div class="pill" id="cash">💰 <b>0</b></div>
     <div class="pill" id="pop">👥 <b>0</b></div>
     <div class="pill" id="bon">😊 <b>50%</b></div>
+    <div class="pill" id="vis">👤 <b>0</b></div>
     <div class="pill" id="niv">⭐ <b>1</b></div>
     <div class="pill" id="auto">🏛️ <b>AUTO</b></div>
   </div>
@@ -252,7 +256,7 @@ const grilleGeo = new THREE.BufferGeometry();
 const S = {
   argent: 12000, pop: 0, bonheur: 50, xp: 0, niveau: 1,
   acier: 6, bois: 4, plast: 2, nbUsines: 0,
-  outil: 'main', mois: 0, temps: 0, collecte: 0
+  outil: 'main', mois: 0, temps: 0, collecte: 0, visiteurs: 0, vols: 0
 };
 const cases = [];
 for(let i=0;i<N;i++){
@@ -357,6 +361,21 @@ function meshBatiment(t, cat){
     const salle = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, 2.4, 10), MAT.vitre);
     salle.position.set(-6, 12 + niv*6, 6); g.add(salle);
     g.userData.aeroport = true;
+    if(niv >= 3){
+      const av = new THREE.Group();
+      const fus = new THREE.Mesh(new THREE.CylinderGeometry(0.9,0.9,7,8),
+        new THREE.MeshLambertMaterial({color:0xf2f5f7}));
+      fus.rotation.x = Math.PI/2; av.add(fus);
+      const aile = new THREE.Mesh(new THREE.BoxGeometry(9,0.35,1.9),
+        new THREE.MeshLambertMaterial({color:0xdfe6ea}));
+      av.add(aile);
+      const q = new THREE.Mesh(new THREE.BoxGeometry(3,0.3,1.2),
+        new THREE.MeshLambertMaterial({color:0xdfe6ea}));
+      q.position.z = -3; av.add(q);
+      av.position.set(0, 3, 0); av.visible = false;
+      g.add(av);
+      g.userData.avion = av;
+    }
     return g;
   }
   if(t.type === 'parc'){
@@ -534,6 +553,9 @@ function recalculer(){
     t.cap = capa;
     pop += capa;
   }
+  // les visiteurs de l'aeroport font monter la population
+  const bonus = Math.min(0.40, S.visiteurs / 320);
+  if(bonus > 0) pop = Math.round(pop * (1 + bonus));
   S.popCible = pop;
   if(S.pop > pop) S.pop = pop;
 
@@ -547,8 +569,34 @@ function tick(dt){
     S.autoT = (S.autoT || 0) + dt;
     if(S.autoT >= 6){ S.autoT = 0; collecteAuto(); }
   }
+  // tourisme : les aeroports amenent des visiteurs
+  let flux = 0;
+  for(let i=0;i<N;i++) for(let j=0;j<N;j++){
+    const a = cases[i][j];
+    if(a.type !== 'aeroport' || !a.bati || !a.alim || !a.eau) continue;
+    if(a.niv >= 3) flux += 1.5; else if(a.niv === 2) flux += 0.35;
+    const av = a.bati.userData.avion;
+    if(av){
+      a.volT = (a.volT || 0) + dt;
+      const cyc = (a.volT % 11) / 11;
+      av.visible = cyc < 0.42;
+      if(av.visible){
+        const k = cyc / 0.42;
+        av.position.set(-30 + k*60, 17 - k*14, -32 + k*22);
+        av.rotation.y = -0.5;
+      }
+    }
+  }
+  if(flux > 0){
+    S.visiteurs = Math.min(700, S.visiteurs + flux * dt);
+    if(!S.msgVis && S.visiteurs > 12){ S.msgVis = true; toast('✈️ Vols internationaux : les visiteurs arrivent'); }
+  }
+  S.visiteurs = Math.max(0, S.visiteurs - S.visiteurs * 0.009 * dt);
+  if(S.visiteurs > 1) S.argent += S.visiteurs * 0.03 * dt;
+  const boost = 1 + Math.min(0.9, S.visiteurs / 320);
+
   if(S.popCible !== undefined && S.pop < S.popCible){
-    S.pop = Math.min(S.popCible, S.pop + Math.max(0.6, (S.popCible - S.pop) * dt * 0.55));
+    S.pop = Math.min(S.popCible, S.pop + Math.max(0.6, (S.popCible - S.pop) * dt * 0.55 * boost));
   }
   S.pop = Math.round(S.pop);
 
@@ -674,6 +722,7 @@ function panneauAeroport(t){
   const c = coutAmelioration(t.niv);
   let corps = '<div class="ligne"><span>Niveau</span><b>'+t.niv+' / 3</b></div>';
   corps += '<div class="ligne"><span>Tourisme</span><b>+'+Math.round(CAT.aeroport.gain*t.niv)+' €/min</b></div>';
+  corps += '<div class="ligne"><span>Visiteurs</span><b>'+(t.niv>=2?Math.round(S.visiteurs):'niv. 3')+'</b></div>';
   if(c){
     corps += '<div style="margin-top:10px;font-weight:800">Améliorer au niveau '+(t.niv+1)+'</div>';
     corps += '<div class="ligne"><span>Il faut</span><span>🔩 '+c.acier+' · 🪵 '+c.bois+' · 🧴 '+c.plast+'</span></div>';
@@ -710,6 +759,8 @@ function majHUD(){
   $('#cash b').textContent = Math.round(S.argent).toLocaleString('fr-FR');
   $('#pop b').textContent = S.pop.toLocaleString('fr-FR');
   $('#bon b').textContent = S.bonheur + '%';
+  const pv = $('#vis');
+  if(pv){ const v = Math.round(S.visiteurs || 0); pv.classList.toggle('on', v > 0); pv.querySelector('b').textContent = v; }
   $('#bon').style.color = S.bonheur>66?'#7ee787':S.bonheur>40?'#fcd116':'#ff8a80';
   $('#niv b').textContent = S.niveau;
   $('#m_acier').textContent = S.acier;
@@ -956,6 +1007,7 @@ function demarrer(){
   routesDirty = true;
   S.argent = 12000; S.pop = 0; S.popCible = 0; S.bonheur = 50; S.xp = 0; S.niveau = 1; S.nbUsines = 0;
   S.acier = 6; S.bois = 4; S.plast = 2; S.outil = 'main';
+  S.visiteurs = 0; S.msgVis = false; S.mairie = 0;
   camTarget.set(0,0,0); camDist = 250; camPitch = 0.95; majCamera();
   $('#start').classList.add('cache');
   $('#end').classList.add('cache');
