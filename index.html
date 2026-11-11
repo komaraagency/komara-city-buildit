@@ -134,6 +134,7 @@
   </div>
   <div id="actions">
     <button id="btnMarche">🤝 Marché</button>
+    <button id="btnZone">🌍 Agrandir</button>
     <button id="btnMat">🛒 Matériaux</button>
     <button id="btnInst">📲 Installer</button>
   </div>
@@ -185,7 +186,7 @@ if(typeof THREE.CapsuleGeometry !== 'function'){
    KOMARA CITY BUILDIT — construction, matériaux, services, habitants
    ========================================================================== */
 const $ = s => document.querySelector(s);
-const N = 16, TS = 12, DEMI = N*TS/2;
+const N = 16, TS = 15, DEMI = N*TS/2;
 
 /* ---------------- rendu ---------------- */
 const canvas = $('#c');
@@ -240,7 +241,7 @@ const MAT = {
   herbe:  new THREE.MeshLambertMaterial({map:TEX_HERBE}),
   asph:   new THREE.MeshLambertMaterial({map:TEX_ASPH}),
   sable:  new THREE.MeshLambertMaterial({map:TEX_SABLE}),
-  ocean:  new THREE.MeshLambertMaterial({color:0x1f7fa6}),
+  ocean:  new THREE.MeshLambertMaterial({color:0x21b0c9}),
   blanc:  new THREE.MeshBasicMaterial({color:0xf2f2f2}),
   noir:   new THREE.MeshLambertMaterial({color:0x24282e}),
   toit:   new THREE.MeshLambertMaterial({color:0xa8452c}),
@@ -303,6 +304,20 @@ const MATF = {
   metal: new THREE.MeshLambertMaterial({map: texFacade('#5f6870','#41484e','#7ea6bd')}),
   beton: new THREE.MeshLambertMaterial({map: texFacade('#b3bac1','#959da5','#6d94ad')})
 };
+const FAC = [
+  ['#e8cf9a','#c9ac72','#5e8fb0'],   // sable
+  ['#e7a77d','#c4825a','#5e8fb0'],   // brique claire
+  ['#c9a7a0','#a8847d','#6a93ad'],   // rose poudre
+  ['#9fc0a4','#7ea383','#5e8fb0'],   // vert sauge
+  ['#a9bfd6','#869fb9','#4d7694'],   // bleu pastel
+  ['#efe4cf','#d3c4a6','#5e8fb0']    // creme
+];
+const MATFC = FAC.map(c => new THREE.MeshLambertMaterial({map: texFacade(c[0], c[1], c[2])}));
+MAT.toitRouge  = new THREE.MeshLambertMaterial({color:0xc4552c});
+MAT.toitOrange = new THREE.MeshLambertMaterial({color:0xd9822b});
+MAT.toitBleu2  = new THREE.MeshLambertMaterial({color:0x4a76a8});
+MAT.toitVert   = new THREE.MeshLambertMaterial({color:0x4d8b5c});
+MAT.toitGris   = new THREE.MeshLambertMaterial({color:0x6c727a});
 MAT.piste      = new THREE.MeshLambertMaterial({color:0x3a3e44});
 MAT.gazon      = new THREE.MeshLambertMaterial({color:0x4d7a3c});
 MAT.sablePiste = new THREE.MeshLambertMaterial({color:0xd9c9a3});
@@ -338,6 +353,94 @@ const TEX_TOIT = canvasTex((x,W,H)=>{
 MAT.toitBeton  = new THREE.MeshLambertMaterial({map:TEX_TOIT});
 
 
+
+/* ---------------- decor de plage : palmiers, parasols, jetee, bateaux ---------------- */
+const decorPlage = new THREE.Group(); scene.add(decorPlage);
+const bateaux = [];
+(function(){
+  const sable = -DEMI - 35;
+  const rng = (a,b)=> a + Math.random()*(b-a);
+  const M = (g,m)=> new THREE.Mesh(g,m);
+  // palmiers
+  for(let k=0;k<22;k++){
+    const z = -DEMI - 20 + k*((DEMI*2+40)/22) + rng(-3,3);
+    const x = -DEMI - 12 + rng(-5,5);
+    const pg = new THREE.Group();
+    const tr = M(new THREE.CylinderGeometry(0.35,0.55,9,6), MAT.tronc);
+    tr.position.y = 4.5; tr.rotation.z = rng(-0.14,0.14); pg.add(tr);
+    for(let f=0;f<7;f++){
+      const feuille = M(new THREE.ConeGeometry(0.9, 6, 4), MAT.feuillage);
+      feuille.scale.set(1, 1, 0.22);
+      feuille.rotation.z = Math.PI/2 - 0.5;
+      feuille.rotation.y = f*(Math.PI*2/7);
+      feuille.position.set(Math.cos(f*0.9)*1.5, 9.1, Math.sin(f*0.9)*1.5);
+      pg.add(feuille);
+    }
+    const noix = M(new THREE.SphereGeometry(0.5,6,5), MAT.tronc);
+    noix.position.set(0.5, 8.6, 0.3); pg.add(noix);
+    pg.position.set(x, 0, z);
+    decorPlage.add(pg);
+  }
+  // parasols + transats
+  const COLP = [0xe0574f,0xf0c419,0x3aa6d8,0xf07f3c,0xffffff,0xd76bb0];
+  for(let k=0;k<16;k++){
+    const g = new THREE.Group();
+    const m = M(new THREE.CylinderGeometry(0.1,0.1,4,5), MAT.metal); m.position.y = 2; g.add(m);
+    const t = M(new THREE.ConeGeometry(3,1.4,10), new THREE.MeshLambertMaterial({color:COLP[k%COLP.length]}));
+    t.position.y = 4.2; g.add(t);
+    const sg = M(new THREE.BoxGeometry(2.6,0.3,1.2), new THREE.MeshLambertMaterial({color:0xffffff}));
+    sg.position.set(0.8,0.3,1.8); g.add(sg);
+    g.position.set(sable + rng(-8,16), 0.1, -DEMI + 8 + k*((DEMI*2-16)/16) + rng(-4,4));
+    decorPlage.add(g);
+  }
+  // jetee en bois
+  const jetee = new THREE.Group();
+  const pont = M(new THREE.BoxGeometry(70,0.8,6.5), MAT.bois); pont.position.set(0,2.2,0); jetee.add(pont);
+  for(let k=0;k<8;k++){
+    const pilier = M(new THREE.BoxGeometry(0.7,4.5,0.7), MAT.bois);
+    pilier.position.set(-31 + k*9, 0.6, 2.8); jetee.add(pilier);
+    const p2 = pilier.clone(); p2.position.z = -2.8; jetee.add(p2);
+  }
+  const cabane = M(new THREE.BoxGeometry(9,5,6), new THREE.MeshLambertMaterial({color:0x2d6a9f}));
+  cabane.position.set(-27,5.2,0); jetee.add(cabane);
+  const toitC = M(new THREE.BoxGeometry(10,0.7,7), MAT.toitRouge); toitC.position.set(-27,8,0); jetee.add(toitC);
+  jetee.position.set(sable - 38, 0, 40);
+  jetee.rotation.y = Math.PI/2;
+  decorPlage.add(jetee);
+  // grande roue
+  const roue = new THREE.Group();
+  const jante = M(new THREE.TorusGeometry(15,0.5,6,32), MAT.metal);
+  roue.add(jante);
+  const nacelleCol = [0xe0574f,0xf0c419,0x3aa6d8,0x9ad25a,0xd76bb0,0xf07f3c];
+  for(let k=0;k<12;k++){
+    const a = k/12*Math.PI*2;
+    const rayon = M(new THREE.BoxGeometry(30,0.18,0.18), MAT.metal);
+    rayon.rotation.z = a; roue.add(rayon);
+    const nac = M(new THREE.BoxGeometry(2.2,2.2,2.2), new THREE.MeshLambertMaterial({color:nacelleCol[k%6]}));
+    nac.position.set(Math.cos(a)*15, Math.sin(a)*15, 0); nac.userData.angle = a; roue.add(nac);
+  }
+  const pieds = M(new THREE.BoxGeometry(1,19,1), MAT.metal); pieds.position.set(-5,-8,0); pieds.rotation.z = 0.28; roue.add(pieds);
+  const pieds2 = pieds.clone(); pieds2.position.set(5,-8,0); pieds2.rotation.z = -0.28; roue.add(pieds2);
+  roue.position.set(sable + 18, 24, -DEMI - 4);
+  roue.rotation.y = Math.PI/2;
+  roue.userData.tourne = true;
+  decorPlage.add(roue);
+  decorPlage.userData.roue = roue;
+  // bateaux a voile
+  for(let k=0;k<6;k++){
+    const b = new THREE.Group();
+    const coque = M(new THREE.BoxGeometry(7,1.6,2.4), new THREE.MeshLambertMaterial({color:0xffffff}));
+    coque.position.y = 0.5; b.add(coque);
+    const mat = M(new THREE.CylinderGeometry(0.12,0.12,10,5), MAT.metal); mat.position.y = 6; b.add(mat);
+    const voile = M(new THREE.PlaneGeometry(5,8),
+      new THREE.MeshLambertMaterial({color:0xfdfdfd, side:THREE.DoubleSide}));
+    voile.position.set(0.2,6,0.05); b.add(voile);
+    b.position.set(sable - 38 - k*26, -0.2, -DEMI + 20 + k*52 + rng(-10,10));
+    b.userData.base = b.position.clone(); b.userData.ph = rng(0,6);
+    decorPlage.add(b); bateaux.push(b);
+  }
+})();
+
 /* ---------------- sol, mer, plage ---------------- */
 const LARGE = N*TS + 240;
 const mer = new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000), MAT.ocean);
@@ -369,7 +472,7 @@ const grilleGeo = new THREE.BufferGeometry();
 const S = {
   argent: 12000, pop: 0, bonheur: 50, xp: 0, niveau: 1,
   acier: 6, bois: 4, plast: 2, nbUsines: 0,
-  outil: 'main', mois: 0, temps: 0, collecte: 0, visiteurs: 0, vols: 0, touristes: 0, colons: 0, saveT: 0
+  outil: 'main', mois: 0, temps: 0, collecte: 0, visiteurs: 0, vols: 0, touristes: 0, colons: 0, saveT: 0, exp: 1
 };
 const cases = [];
 for(let i=0;i<N;i++){
@@ -398,10 +501,20 @@ const CAT = {
   ecole:    {nom:'École',      ico:'🏫', prix:520,  mat:{bois:3,acier:1},   cat:'svc', rayon:95, key:'ecole', niv:2},
   mairie:   {nom:'Mairie',     ico:'🏛️', prix:1600, mat:{acier:8,bois:5},   cat:'svc', rayon:140, key:'admin', niv:1, auto:true},
   aeroport: {nom:'Aéroport',   ico:'✈️', prix:2600, mat:{acier:12,bois:8,plast:8}, cat:'eco', gain:190, cap:640, niv:2, aeroport:true},
-  bulldozer:{nom:'Détruire',   ico:'🚜', prix:15,   mat:{},                 cat:'base'}
+  bulldozer:{nom:'Détruire',   ico:'🚜', prix:15,   mat:{},                 cat:'base'},
+  banc:      {nom:'Banc',       ico:'🪑', prix:60,   mat:{bois:1},           cat:'deco', deco:true, sol:true, niv:1},
+  chaise:    {nom:'Chaise',     ico:'💺', prix:40,   mat:{bois:1},           cat:'deco', deco:true, sol:true, niv:1},
+  lampadaire:{nom:'Lampadaire', ico:'💡', prix:110,  mat:{acier:1},          cat:'deco', deco:true, sol:true, niv:1},
+  spot:      {nom:'Éclairage',  ico:'🔦', prix:150,  mat:{acier:1,plast:1},  cat:'deco', deco:true, sol:true, niv:2},
+  fleurs:    {nom:'Massif',     ico:'🌷', prix:70,   mat:{bois:1},           cat:'deco', deco:true, sol:true, niv:1},
+  arbre:     {nom:'Arbre',      ico:'🌳', prix:90,   mat:{bois:1},           cat:'deco', deco:true, sol:true, niv:1},
+  fontaine:  {nom:'Fontaine',   ico:'⛲', prix:420,  mat:{acier:2,bois:1},   cat:'deco', deco:true, sol:true, niv:2},
+  statue:    {nom:'Statue',     ico:'🗿', prix:600,  mat:{acier:3},          cat:'deco', deco:true, sol:true, niv:3},
+  panneau:   {nom:'Panneau',    ico:'🪧', prix:220,  mat:{acier:1,plast:1},  cat:'deco', deco:true, sol:true, niv:2},
 };
 const ORDRE = ['main','route','maison','immeuble','commerce','bureau','usine',
-  'centrale','eau','police','pompier','hopital','parc','ecole','mairie','aeroport','bulldozer'];
+  'centrale','eau','police','pompier','hopital','parc','ecole','mairie','aeroport',
+  'banc','chaise','lampadaire','spot','fleurs','arbre','fontaine','statue','panneau','bulldozer'];
 
 /* ---------------- meshes ---------------- */
 const routes = [];   // meshes de route fusionnables
@@ -460,6 +573,14 @@ function reconstruireRoutes(){
 
 /* ---------------- bâtiments modernes ---------------- */
 const TUILE = 4;                       // une tuile de texture = 4 unités
+function geoToit(w, h, d){
+  // prisme triangulaire : faitage le long de Z
+  const s = new THREE.Shape();
+  s.moveTo(-w/2, 0); s.lineTo(w/2, 0); s.lineTo(0, h); s.lineTo(-w/2, 0);
+  const g = new THREE.ExtrudeGeometry(s, {depth:d, bevelEnabled:false});
+  g.translate(0, 0, -d/2);
+  return g;
+}
 function geoBloc(w,h,d){
   const geo = new THREE.BoxGeometry(w,h,d);
   const uv = geo.attributes.uv;
@@ -472,6 +593,68 @@ function teinte(mat, hex){
   const k = mat.uuid + '_' + hex;
   if(!cacheTeinte[k]){ const m = mat.clone(); m.color.setHex(hex); cacheTeinte[k] = m; }
   return cacheTeinte[k];
+}
+function meshDeco(type, niv){
+  const g = new THREE.Group();
+  g.userData.cible = 1.35;
+  g.scale.setScalar(1.35);
+  const B = (w,hh,dd,mat,x,y,z)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(w,hh,dd),mat);
+    m.position.set(x||0,y||0,z||0); g.add(m); return m; };
+  const C = (r1,r2,hh,mat,x,y,z,seg)=>{ const m=new THREE.Mesh(new THREE.CylinderGeometry(r1,r2,hh,seg||10),mat);
+    m.position.set(x||0,y||0,z||0); g.add(m); return m; };
+  if(type === 'banc'){
+    B(6,0.5,1.8,MAT.bois,0,1.4,0); B(6,1.6,0.4,MAT.bois,0,2.2,-0.7);
+    B(0.4,1.4,1.6,MAT.metal,-2.4,0.7,0); B(0.4,1.4,1.6,MAT.metal,2.4,0.7,0);
+  } else if(type === 'chaise'){
+    B(2.4,0.4,2.4,MAT.blancMat,0,1.1,0); B(2.4,2,0.35,MAT.blancMat,0,2.1,-0.95);
+    for(const [x,z] of [[-1,1],[1,1],[-1,-1],[1,-1]]) B(0.3,1.1,0.3,MAT.metal,x,0.55,z);
+  } else if(type === 'lampadaire'){
+    C(0.28,0.34,7,MAT.metal,0,3.5,0,8);
+    const tete = new THREE.Mesh(new THREE.SphereGeometry(1.15,10,8),
+      new THREE.MeshBasicMaterial({color:0xfff3b0})); tete.position.set(0,7.4,0); g.add(tete);
+    B(2.6,0.3,0.5,MAT.metal,1.1,7.15,0);
+  } else if(type === 'spot'){
+    C(1.1,1.4,0.6,MAT.metal,0,0.4,0,10);
+    const l = new THREE.Mesh(new THREE.CylinderGeometry(0.9,1.3,2.4,10),
+      new THREE.MeshBasicMaterial({color:0xffe89a})); l.position.set(0,1.9,0); g.add(l);
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(3.2,2.6,12,1,true),
+      new THREE.MeshBasicMaterial({color:0xffe89a,transparent:true,opacity:0.16,side:THREE.DoubleSide,depthWrite:false}));
+    cone.position.set(0,3.9,0); g.add(cone);
+  } else if(type === 'fleurs'){
+    C(3.4,3.4,0.5,MAT.gazon,0,0.5,0,12);
+    const COL = [0xe0574f,0xf0c419,0xd76bb0,0xf07f3c,0xf2f2f2];
+    for(let k=0;k<11;k++){
+      const a = k*2.4, r = 0.6 + (k%3)*0.85;
+      const f = new THREE.Mesh(new THREE.SphereGeometry(0.45,7,6),
+        new THREE.MeshLambertMaterial({color:COL[k%COL.length]}));
+      f.position.set(Math.cos(a)*r, 0.85, Math.sin(a)*r); g.add(f);
+    }
+  } else if(type === 'arbre'){
+    C(0.55,0.75,4.4,MAT.tronc,0,2.4,0,7);
+    const s1 = new THREE.Mesh(new THREE.SphereGeometry(3,10,8), MAT.feuillage);
+    s1.position.set(0,6.4,0); s1.scale.y = 0.9; g.add(s1);
+    const s2 = new THREE.Mesh(new THREE.SphereGeometry(2.1,9,7), MAT.feuillage2);
+    s2.position.set(1.5,5.2,1); g.add(s2);
+    const s3 = new THREE.Mesh(new THREE.SphereGeometry(1.8,9,7), MAT.feuillage2);
+    s3.position.set(-1.6,5.4,-0.8); g.add(s3);
+  } else if(type === 'fontaine'){
+    C(4.2,4.4,1.1,MAT.betonClair,0,0.55,0,14);
+    C(3.5,3.5,1.2,new THREE.MeshLambertMaterial({color:0x4aa3c7}),0,1.1,0,14);
+    C(0.7,0.9,2.6,MAT.betonClair,0,2.2,0,8);
+    C(1.9,0.5,0.6,MAT.betonClair,0,3.4,0,10);
+  } else if(type === 'statue'){
+    B(3.6,1.2,3.6,MAT.betonClair,0,0.6,0);
+    B(2.6,2.2,2.6,MAT.beton,0,2.3,0);
+    const corps = new THREE.Mesh(new THREE.CylinderGeometry(0.75,1.05,3.4,9), MAT.metal);
+    corps.position.set(0,5,0); g.add(corps);
+    const tete = new THREE.Mesh(new THREE.SphereGeometry(0.72,10,8), MAT.metal);
+    tete.position.set(0,7,0); g.add(tete);
+  } else if(type === 'panneau'){
+    C(0.3,0.3,6,MAT.metal,0,3,0,8);
+    const pan = new THREE.Mesh(new THREE.BoxGeometry(5,3,0.35),
+      new THREE.MeshLambertMaterial({map: texPanneau()})); pan.position.set(0,6,0); g.add(pan);
+  }
+  return g;
 }
 function meshBatiment(t, cat){
   const g = new THREE.Group();
@@ -630,30 +813,46 @@ function meshBatiment(t, cat){
 
   /* ---------- MAISON (villa moderne) ---------- */
   if(type === 'maison'){
-    const h1 = 3.6, h2 = 3.2 + niv*0.5;
-    bloc(7.4, h1, 6.4, MATF.blanc, h1/2 + 0.4);
-    bloc(5.6, h2, 5.6, MATF.blanc, h1 + h2/2 + 0.6, -0.6, -0.3);
-    slab(8.4, 0.45, 7.2, MAT.toitBeton, h1 + 0.55);
-    slab(6.4, 0.4, 6.2, MAT.bois, h1 + h2 + 0.8, -0.6, -0.3);
-    slab(7.6, 1.5, 0.25, MAT.verre, 1.9, 0, 3.25);
-    slab(5.6, 1.4, 0.22, MAT.verre, h1 + 2.2, -0.6, 2.55);
-    slab(2.4, 1.6, 2.4, MAT.gazon, 0.35, 3.9, 3.4);
-    slab(2.6, 1.2, 2.6, MAT.feuillage, 1.4, 3.9, 3.4);
+    const k = Math.floor(Math.random()*MATFC.length);
+    const toits = [MAT.toitRouge, MAT.toitOrange, MAT.toitBleu2, MAT.toitVert];
+    const mt = toits[(k + niv) % toits.length];
+    const hh = 5.2 + niv*0.6;
+    const corps = new THREE.Mesh(geoBloc(7.2, hh, 6.2), MATFC[k]);
+    corps.position.set(0, hh/2 + 0.4, 0); g.add(corps);
+    const toit = new THREE.Mesh(geoToit(8.2, 3.4, 7), mt);
+    toit.rotation.y = Math.PI/2; toit.position.set(0, hh + 0.4, 0); g.add(toit);
+    const chem = new THREE.Mesh(new THREE.BoxGeometry(0.9,2,0.9), MAT.toitGris);
+    chem.position.set(1.8, hh + 2.6, -1.2); g.add(chem);
+    slab(1.5, 2.6, 0.2, MAT.bois, 1.7, -1.4, 3.15);
+    slab(2.2, 1.7, 0.2, MAT.verre, 2.7, 1.6, 3.15);
+    // petit jardin
+    slab(9, 0.18, 8, MAT.gazon, 0.3, 0, 0);
+    // arbuste
+    const ar = new THREE.Mesh(new THREE.SphereGeometry(1.4,8,7), MAT.feuillage);
+    ar.position.set(-3.6, 1.8, 3.2); g.add(ar);
     return finir(g, t);
   }
 
   /* ---------- IMMEUBLE (résidentiel à gradins) ---------- */
   if(type === 'immeuble'){
-    const h1 = 13 + niv*2.2;
-    bloc(8.8, h1, 7.8, MATF.beige, h1/2 + 0.4);
-    slab(9.4, 0.55, 8.4, MAT.toitBeton, h1 + 0.7);
-    const h2 = 7 + niv*1.8;
-    bloc(6.6, h2, 6, MATF.blanc, h1 + h2/2 + 0.9, 0, -0.4);
-    slab(7.2, 0.5, 6.6, MAT.toitBeton, h1 + h2 + 1.15, 0, -0.4);
-    for(let k=0;k<3;k++){
-      slab(1.6, 1.1, 1.6, MAT.metal, h1 + h2 + 1.75, -2 + k*2, 0.4);
+    const k = Math.floor(Math.random()*MATFC.length);
+    const h1 = 12 + niv*2.4;
+    bloc(8.8, h1, 7.8, MATFC[k], h1/2 + 0.4);
+    // corniche
+    slab(9.5, 0.7, 8.5, MAT.betonClair, h1 + 0.8);
+    // etage de couronnement avec toit orange
+    const h2 = 4.2;
+    const cur = new THREE.Mesh(geoBloc(7.4, h2, 6.4), MATFC[(k+2) % MATFC.length]);
+    cur.position.set(0, h1 + h2/2 + 1.1, 0); g.add(cur);
+    const toit = new THREE.Mesh(geoToit(8.4, 3.6, 7.4), (k%2) ? MAT.toitRouge : MAT.toitBleu2);
+    toit.rotation.y = Math.PI/2; toit.position.set(0, h1 + h2 + 1.1, 0); g.add(toit);
+    // balcons
+    for(let e=0;e<Math.floor(h1/5);e++){
+      slab(7.2, 0.35, 1.3, MAT.betonClair, 3.6 + e*4.6, 0, 4.4);
     }
-    slab(7.8, 0.35, 5, MAT.bois, h1 + 0.95, 0, 2.6);
+    // rez-de-chaussee boutique
+    slab(8.2, 2.2, 0.25, MAT.verre, 1.8, 0, 3.95);
+    slab(8.4, 0.5, 1.4, MAT.auvent, 3.2, 0, 4.5);
     return finir(g, t);
   }
 
@@ -680,16 +879,59 @@ function meshBatiment(t, cat){
 function finir(g, t){
   const om = new THREE.Mesh(new THREE.PlaneGeometry(TS*1.02, TS*1.02), MAT.ombreDouce);
   om.rotation.x = -Math.PI/2; om.position.set(2.6, 0.16, 2.6); g.add(om);
+  const gros = {maison:1.5, immeuble:1.45, commerce:1.5, bureau:1.45, usine:1.4, centrale:1.4, eau:1.4,
+                police:1.5, pompier:1.5, hopital:1.4, ecole:1.45, mairie:1.4, parc:1.5};
+  g.userData.cible = gros[t.type] || 1;
+  g.scale.setScalar(g.userData.cible);
   g.position.set(t.x, 0, t.z);
   g.userData.dyn = true;
   return g;
 }
 
 
+/* ---------------- extension du terrain ---------------- */
+const COUT_ESPACE = [0, 6000, 18000, 45000, 90000];
+function rayonDebloque(){ return 3.5 + (S.exp - 1) * 1.5; }
+function estDeverrouille(i, j){
+  const c = (N - 1) / 2;
+  return Math.max(Math.abs(i - c), Math.abs(j - c)) <= rayonDebloque() + 0.01;
+}
+function coutEspace(){ return COUT_ESPACE[Math.min(S.exp, COUT_ESPACE.length - 1)] || 0; }
+function agrandir(){
+  if(S.exp >= 4){ toast('Terrain déjà au maximum', true); return false; }
+  const c = coutEspace();
+  if(S.argent < c){ toast('Il faut ' + c + ' € pour agrandir', true); return false; }
+  S.argent -= c; S.exp++;
+  reconstruireVerrou(); majHUD(); sauvegarder();
+  toast('🌍 Terrain agrandi ! Tu peux construire plus loin');
+  return true;
+}
+let verrouMesh = null;
+function reconstruireVerrou(){
+  if(verrouMesh){ monde.remove(verrouMesh); verrouMesh.geometry.dispose(); verrouMesh = null; }
+  const pos=[], nor=[];
+  for(let i=0;i<N;i++) for(let j=0;j<N;j++){
+    if(estDeverrouille(i,j)) continue;
+    const t = cases[i][j];
+    const g = new THREE.PlaneGeometry(TS*0.98, TS*0.98).toNonIndexed();
+    g.rotateX(-Math.PI/2); g.translate(t.x, 0.55, t.z);
+    const p = g.attributes.position.array, n = g.attributes.normal.array;
+    for(let k=0;k<p.length;k++){ pos.push(p[k]); nor.push(n[k]); }
+  }
+  if(!pos.length) return;
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos,3));
+  geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor,3));
+  verrouMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color:0x0a141d, transparent:true, opacity:0.42, depthWrite:false}));
+  verrouMesh.frustumCulled = false;
+  monde.add(verrouMesh);
+}
+
 function poserBatiment(t, type){
   const cat = CAT[type]; if(!cat) return false;
   if(t.route || t.bati) { toast('Case déjà occupée', true); return false; }
-  if(!aRoute(t)) { toast('Il faut une route à côté', true); return false; }
+  if(!estDeverrouille(t.i, t.j)) { toast('Cet espace est verrouillé : agrandis le terrain', true); return false; }
+  if(!cat.sol && !aRoute(t)) { toast('Il faut une route à côté', true); return false; }
   const cout = cat.prix || 0;
   if(S.argent < cout){ toast('Pas assez d\'argent', true); return false; }
   for(const k in (cat.mat||{})){
@@ -723,6 +965,7 @@ function detruire(t){
 }
 
 function poserRoute(t){
+  if(!estDeverrouille(t.i, t.j)) { toast('Cet espace est verrouillé', true); return false; }
   if(t.route || t.bati) return false;
   if(S.argent < 30){ toast('Pas assez d\'argent', true); return false; }
   S.argent -= 30; t.route = true; routesDirty = true;
@@ -785,6 +1028,13 @@ function recalculer(){
   S.mairie = mairies;
   S.aeroports = aeroports;
   b += Math.min(10, parcs*2.2);
+  let deco = 0;
+  for(let i=0;i<N;i++) for(let j=0;j<N;j++){
+    const t = cases[i][j];
+    if(t.type && CAT[t.type] && CAT[t.type].deco) deco++;
+  }
+  S.nbDeco = deco;
+  b += Math.min(14, deco*1.5);
   b += Math.min(8, mairies*4);
   b += Math.min(9, aeroports*4.5);
   S.bonheur = Math.max(0, Math.min(100, Math.round(b)));
@@ -1015,6 +1265,11 @@ function ameliorerAeroport(t){
 
 /* ---------------- HUD ---------------- */
 function majHUD(){
+  const pz = $('#btnZone');
+  if(pz){
+    if(S.exp >= 4){ pz.textContent = '🌍 Terrain max'; }
+    else { pz.textContent = '🌍 Agrandir ' + coutEspace().toLocaleString('fr-FR') + ' €'; }
+  }
   const pa = $('#auto'); if(pa) pa.classList.toggle('on', (S.mairie||0) > 0);
   $('#cash b').textContent = Math.round(S.argent).toLocaleString('fr-FR');
   $('#pop b').textContent = S.pop.toLocaleString('fr-FR');
@@ -1095,6 +1350,7 @@ if(window.screen && window.screen.orientation && window.screen.orientation.addEv
 }
 redimensionner();
 
+$('#btnZone').onclick = ()=> agrandir();
 $('#btnMarche').onclick = ()=> panneauMarche();
 $('#btnMat').onclick = ()=> panneauMateriaux();
 $('#panFermer').onclick = ()=> fermerPanneau();
@@ -1241,9 +1497,29 @@ function montrerInfo(t){
 
 /* ---------------- boucle ---------------- */
 let dernier = performance.now(), accum = 0, compteur = 0;
+function animerDecor(dt){
+  const roue = decorPlage.userData.roue;
+  if(roue){
+    roue.children.forEach(c=>{
+      if(c.userData.angle !== undefined){
+        c.userData.angle += dt*0.12;
+        c.position.x = Math.cos(c.userData.angle)*15;
+        c.position.y = Math.sin(c.userData.angle)*15;
+      }
+    });
+  }
+  const T = performance.now()/1000;
+  bateaux.forEach(b=>{
+    b.position.y = -0.2 + Math.sin(T*0.9 + b.userData.ph)*0.35;
+    b.rotation.z = Math.sin(T*0.7 + b.userData.ph)*0.05;
+    b.position.x = b.userData.base.x + Math.sin(T*0.12 + b.userData.ph)*5;
+  });
+}
+
 function boucle(now){
   const dt = Math.min(0.05, (now - dernier)/1000);
   dernier = now;
+  animerDecor(dt);
   if(S.joue){
     tick(dt);
     accum += dt;
@@ -1255,9 +1531,12 @@ function boucle(now){
   // animation de pose + pièces
   for(let i=0;i<N;i++) for(let j=0;j<N;j++){
     const t = cases[i][j];
-    if(t.bati && t.bati.scale.x < 1){
-      const s = Math.min(1, t.bati.scale.x + dt*3.4);
-      t.bati.scale.set(s,s,s);
+    if(t.bati){
+      const cible = t.bati.userData.cible || 1;
+      if(t.bati.scale.x < cible - 0.001){
+        const s = Math.min(cible, t.bati.scale.x + dt*3.4*cible);
+        t.bati.scale.set(s,s,s);
+      }
     }
     if(t.bati && ((CAT[t.type]||{}).taux || (CAT[t.type]||{}).gain) && t.caisse > 8){
       // petite pièce flottante
@@ -1293,11 +1572,12 @@ function demarrer(avecSauvegarde){
   routesDirty = true;
   S.argent = 12000; S.pop = 0; S.popCible = 0; S.bonheur = 50; S.xp = 0; S.niveau = 1; S.nbUsines = 0;
   S.acier = 6; S.bois = 4; S.plast = 2; S.outil = 'main';
-  S.touristes = 0; S.colons = 0; S.colT = 0; S.msgVis = false; S.mairie = 0;
+  S.touristes = 0; S.colons = 0; S.colT = 0; S.msgVis = false; S.mairie = 0; S.exp = 1;
   camTarget.set(0,0,0); camDist = 235; camPitch = 0.62; camRot = 0.35; majCamera();
   $('#start').classList.add('cache');
   $('#end').classList.add('cache');
   S.joue = true;
+  reconstruireVerrou();
   if(avecSauvegarde) restaurer(); else effacerSauvegarde();
   const bsv = document.getElementById('goSave');
   if(bsv) bsv.style.display = aSauvegarde() ? 'block' : 'none';
@@ -1577,6 +1857,7 @@ function restaurer(){
   routesDirty = true;
   recalculer();
   majHUD();
+  reconstruireVerrou();
   return true;
 }
 
@@ -1616,7 +1897,8 @@ window.G = {
   majCamera, N,
   panneauAeroport, ameliorerAeroport, panneauMateriaux, acheterMat, collecteAuto, fermerPanneau,
   sauvegarder, restaurer, aSauvegarde, effacerSauvegarde,
-  panneauMarche, marcheLister, marchePublier, marcheAcheter, voitures
+  panneauMarche, marcheLister, marchePublier, marcheAcheter, voitures,
+  estDeverrouille, agrandir, coutEspace, reconstruireVerrou
 };
 </script>
 </body>
